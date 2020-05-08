@@ -37,6 +37,9 @@ Infix "→" := arrow (at level 60, no associativity).
 Infix "∩" := cap (at level 60, no associativity).
 
 (** Multiplying Base Types *)
+(* Note: We could simply include multiplication in BaseType or tensortype
+   and have a normal form. Conversion would be via rewrite axioms rather than
+   simplification (as in typing file). *)
 
 Definition negate (t : BaseType) : BaseType :=
   match t with
