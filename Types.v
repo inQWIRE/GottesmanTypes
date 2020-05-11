@@ -1,135 +1,75 @@
 (** Types *)
 
-Inductive BasisType := X | Z.
-
-Inductive xzBaseType := I | XZ | B (b : BasisType).
-
-Coercion B : BasisType >-> xzBaseType.
-
-Inductive iBaseType :=
-| r : xzBaseType -> iBaseType
-| i : xzBaseType -> iBaseType.
-
-Coercion r : xzBaseType >-> iBaseType.
-
-Inductive BaseType :=
-| pos : iBaseType -> BaseType
-| neg : iBaseType -> BaseType.
-
-Coercion pos : iBaseType >-> BaseType.
-Notation "- T" := (neg T).
-
-Inductive tensorType :=
-| single : BaseType -> tensorType
-| cons   : BaseType -> tensorType -> tensorType.
-
-Coercion single : BaseType >-> tensorType.
+(* This won't work with equality due to inversion. 
+Inductive coefficient :=
+| Gi
+| Gneg.
 
 Inductive GType :=
-| G : tensorType -> GType
-| arrow : GType -> GType -> GType
-| cap : GType -> GType -> GType.
+| I
+| X
+| Z
+| scale : coefficient -> GType -> GType
+| mul : GType -> GType -> GType
+| tensor : GType -> GType -> GType
+| cap : GType -> GType -> GType
+| arrow : GType -> GType -> GType.
+ *)
 
-Coercion G : tensorType >-> GType.
+Parameter GType : Type.
+Parameter I : GType.
+Parameter X : GType.
+Parameter Z : GType.
+Parameter i : GType -> GType.
+Parameter neg : GType -> GType.
+Parameter mul : GType -> GType -> GType.
+Parameter tensor : GType -> GType -> GType.
+Parameter cap : GType -> GType -> GType.
+Parameter arrow : GType -> GType -> GType.
 
-Infix "⊗" := cons (at level 51, right associativity).
+Notation "- T" := (neg T).
+Infix "*" := mul (at level 40, left associativity).
+Infix "⊗" := tensor (at level 51, right associativity).
 Infix "→" := arrow (at level 60, no associativity). 
 Infix "∩" := cap (at level 60, no associativity).
 
-(** Multiplying Base Types *)
-(* Note: We could simply include multiplication in BaseType or tensortype
-   and have a normal form. Conversion would be via rewrite axioms rather than
-   simplification (as in typing file). *)
+Notation Y := (i (X * Z)).
 
-Definition negate (t : BaseType) : BaseType :=
-  match t with
-  | pos t' => neg t'
-  | neg t' => pos t'
-  end.
+(* Multiplication laws *)
 
-Definition mul_i (t : BaseType) : BaseType :=
-  match t with
-  | pos (r t') => i t'
-  | pos (i t') => -t'
-  | neg (r t') => -(i t')
-  | neg (i t') => t'                     
-  end.
+Axiom mul_assoc : forall A B C, A * (B * C) = A * B * C.
+Axiom I_1_l : forall A, I * A = A.
+Axiom I_1_r : forall A, A * I = A.
+Axiom Xsqr : X * X = I.
+Axiom Zsqr : Z * Z = I.
+Axiom ZmulX : Z * X = - (X * Z).
 
-(* Currently not used 
-Definition lift_to_base (f : iBaseType -> iBaseType -> BaseType) :
-  BaseType -> BaseType -> BaseType :=
-  fun t1 t2 => match t1, t2 with
-            | pos t1', pos t2' => f t1' t2'
-            | pos t1', neg t2' => negate (f t1' t2')
-            | neg t1', pos t2' => negate (f t1' t2')
-            | neg t1', neg t2' => f t1' t2'
-            end.
+Axiom neg_inv : forall A, - - A = A.
+Axiom neg_dist_l : forall A B, -A * B = - (A * B).
+Axiom neg_dist_r : forall A B, A * -B = - (A * B).
 
-Definition lift_to_ibase (f : xzBaseType -> xzBaseType -> iBaseType) :
-  iBaseType -> iBaseType -> BaseType :=
-  fun t1 t2 => match t1, t2 with
-            | r t1', r t2' => f t1' t2'
-            | r t1', i t2' => mul_i (f t1' t2')
-            | i t1', r t2' => mul_i (f t1' t2')
-            | i t1', i t2' => negate (f t1' t2')
-            end.
- *)
+Axiom i_sqr : forall A, i (i A) = -A.
+Axiom i_dist_l : forall A B, i A * B = i (A * B).
+Axiom i_dist_r : forall A B, A * i B = i (A * B).
 
-Definition lift_from_ibase (f : iBaseType -> iBaseType -> BaseType) :
-  BaseType -> BaseType -> BaseType :=
-  fun t1 t2 => match t1, t2 with
-            | pos t1', pos t2' => f t1' t2'
-            | pos t1', neg t2' => negate (f t1' t2')
-            | neg t1', pos t2' => negate (f t1' t2')
-            | neg t1', neg t2' => f t1' t2'
-            end.
+Axiom i_neg_comm : forall A, i (-A) = -i A.
 
-Definition lift_from_xzbase (f : xzBaseType -> xzBaseType -> BaseType) :
-  iBaseType -> iBaseType -> BaseType :=
-  fun t1 t2 => match t1, t2 with
-            | r t1', r t2' => f t1' t2'
-            | r t1', i t2' => mul_i (f t1' t2')
-            | i t1', r t2' => mul_i (f t1' t2')
-            | i t1', i t2' => negate (f t1' t2')
-            end.
+Hint Rewrite I_1_l I_1_r Xsqr Zsqr ZmulX neg_inv neg_dist_l neg_dist_r i_sqr i_dist_l i_dist_r i_neg_comm : mul_db.
 
-
-Definition bmul (t1 t2 : BasisType) : BaseType :=
-  match t1, t2 with
-  | X, X => I
-  | X, Z => XZ
-  | Z, X => -XZ            
-  | Z, Z => I
-  end.
-
-Definition xzmul (t1 t2 : xzBaseType) : BaseType :=
-  match t1, t2 with
-  | B b1, B b2 => bmul b1 b2  
-  | I, _       => t2
-  | _, I       => t1
-  | XZ, X      => -Z
-  | XZ, Z      => X
-  | X,  XZ     => Z
-  | Z,  XZ     => -X
-  | XZ, XZ     => -I
-  end.
-
-Definition imul  (t1 t2 : iBaseType) : BaseType := (lift_from_xzbase xzmul) t1 t2.
-
-Definition gmul (t1 t2 : BaseType) : BaseType := (lift_from_ibase imul) t1 t2.
-
-Infix "*" := gmul.
-
-Notation Y := (i XZ).
-
-Example Xsqr : X * X = I. Proof. reflexivity. Qed.
-Example Zsqr : Z * Z = I. Proof. reflexivity. Qed.
-Example Ysqr : Y * Y = I. Proof. reflexivity. Qed.
-Example XtimesZ : X * Z = XZ. Proof. reflexivity. Qed.
-Example ZtimesX : Z * X = -XZ. Proof. reflexivity. Qed.
-Example XtimesY : X * Y = i Z. Proof. reflexivity. Qed.
-Example YtimesX : Y * X = -i Z. Proof. reflexivity. Qed.
-Example ZtimesY : Z * Y = -i X. Proof. reflexivity. Qed.
-Example YtimesZ : Y * Z = i X. Proof. reflexivity. Qed.
+(* Note: I haven't proven that this works or terminates.
+   An anticommutative monoidal solver would be ideal here. *)
+Ltac normalize_mul :=
+  repeat rewrite mul_assoc;
+  repeat (
+      try rewrite <- (mul_assoc X Z _);
+      autorewrite with mul_db;
+      try rewrite mul_assoc ).
+  
+Lemma Ysqr : Y * Y = I. Proof. normalize_mul. reflexivity. Qed.
+Lemma XmulZ : X * Z = - Z * X. Proof. normalize_mul. reflexivity. Qed.
+Lemma XmulY : X * Y = i Z. Proof. normalize_mul. reflexivity. Qed.
+Lemma YmulX : Y * X = -i Z. Proof. normalize_mul. reflexivity. Qed.
+Lemma ZmulY : Z * Y = -i X. Proof. normalize_mul. reflexivity. Qed.
+Lemma YmulZ : Y * Z = i X. Proof. normalize_mul. reflexivity. Qed.
 
 
