@@ -1,6 +1,6 @@
 (** Types *)
 
-(* This won't work with equality due to inversion. 
+(* This won't work with equality due to inversion.
 Inductive coefficient :=
 | Gi
 | Gneg.
@@ -30,7 +30,7 @@ Parameter arrow : GType -> GType -> GType.
 Notation "- T" := (neg T).
 Infix "*" := mul (at level 40, left associativity).
 Infix "⊗" := tensor (at level 51, right associativity).
-Infix "→" := arrow (at level 60, no associativity). 
+Infix "→" := arrow (at level 60, no associativity).
 Infix "∩" := cap (at level 60, no associativity).
 
 Notation Y := (i (X * Z)).
@@ -64,12 +64,10 @@ Ltac normalize_mul :=
       try rewrite <- (mul_assoc X Z _);
       autorewrite with mul_db;
       try rewrite mul_assoc ).
-  
+
 Lemma Ysqr : Y * Y = I. Proof. normalize_mul. reflexivity. Qed.
 Lemma XmulZ : X * Z = - Z * X. Proof. normalize_mul. reflexivity. Qed.
 Lemma XmulY : X * Y = i Z. Proof. normalize_mul. reflexivity. Qed.
 Lemma YmulX : Y * X = -i Z. Proof. normalize_mul. reflexivity. Qed.
 Lemma ZmulY : Z * Y = -i X. Proof. normalize_mul. reflexivity. Qed.
 Lemma YmulZ : Y * Z = i X. Proof. normalize_mul. reflexivity. Qed.
-
-
