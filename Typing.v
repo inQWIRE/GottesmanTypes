@@ -4,22 +4,22 @@ Require Export Types.
 
 (* Can also use sequence and parallel in place of nats, ala QBricks *)
 Inductive prog :=
-| H (n : nat)
-| S (n : nat)
-| T (n : nat)
+| H' (n : nat)
+| S' (n : nat)
+| T' (n : nat)
 | CNOT (n1 n2 : nat)
 | seq (p1 p2 : prog).
 
 Infix ";" := seq (at level 51, right associativity).
 
 (* I, X, Y and Z as derived gates *)
-Definition Z' n : prog := S n ; S n.
-Definition X' n : prog := H n ; Z' n; H n.
-Definition Y' n : prog := S n; X' n; Z' n; S n.
-Definition I' n : prog := H n; H n.
+Definition Z' n : prog := S' n ; S' n.
+Definition X' n : prog := H' n ; Z' n; H' n.
+Definition Y' n : prog := S' n; X' n; Z' n; S' n.
+Definition I' n : prog := H' n; H' n.
 
 (* Other common gates *)
-Definition CZ m n : prog := H n ; CNOT m n ; H n.
+Definition CZ m n : prog := H' n ; CNOT m n ; H' n.
 Definition SWAP m n : prog := CNOT m n; CNOT n m; CNOT m n.
 
 
@@ -27,10 +27,10 @@ Definition SWAP m n : prog := CNOT m n; CNOT n m; CNOT m n.
 
 Parameter has_type : prog -> GType -> Prop.
 
-Notation "H :: T" := (has_type H T).
+Notation "p :: T" := (has_type p T).
 
-Axiom HTypes : H 0 :: (X → Z) ∩ (Z → X).
-Axiom STypes : S 0 :: (X → Y) ∩ (Z → Z).
+Axiom HTypes : H' 0 :: (X → Z) ∩ (Z → X).
+Axiom STypes : S' 0 :: (X → Y) ∩ (Z → Z).
 Axiom CNOTTypes : CNOT 0 1 :: (X ⊗ I → X ⊗ X) ∩ (I ⊗ X → I ⊗ X) ∩
                              (Z ⊗ I → Z ⊗ I) ∩ (I ⊗ Z → Z ⊗ Z).
 
@@ -75,7 +75,7 @@ Lemma cap_arrow_distributes' : forall g A A' B B',
   g :: (A → A') ∩ (B → B') ->
   g :: (A ∩ B) → (A' ∩ B').
 intros.
-  apply cap_elim in H0 as [TA TB].
+  apply cap_elim in H as [TA TB].
   apply cap_arrow.
   apply cap_intro.
   - apply arrow_sub with (A := A) (B := A'); trivial. intros l. apply cap_elim_l.
@@ -91,13 +91,13 @@ Proof.
   apply cap_arrow.
   apply cap_intro.
   - eapply arrow_sub; intros.
-    + eapply cap_elim_l. apply H1.
-    + apply H1.
     + eapply cap_elim_l. apply H0.
+    + apply H0.
+    + eapply cap_elim_l. apply H.
   - eapply arrow_sub; intros.
-    + eapply cap_elim_r. apply H1.
-    + apply H1.
     + eapply cap_elim_r. apply H0.
+    + apply H0.
+    + eapply cap_elim_r. apply H.
 Qed.
 
 (** Tensor rules *)
@@ -114,20 +114,23 @@ Axiom S_mul : forall A B, Singleton A -> Singleton B -> Singleton (A * B).
 
 Axiom tensor_inc : forall g n E A A',
     Singleton A ->
+    Singleton E ->
     g n :: (A → A') ->
     g (s n) ::  E ⊗ A → E ⊗ A'. 
 
 Axiom tensor_inc2 : forall (g : nat -> nat -> prog) m n E A A' B B',
     Singleton A ->
     Singleton B ->
+    Singleton E ->
     g m n :: (A ⊗ B → A' ⊗ B') ->
     g (s m) (s n) ::  E ⊗ A ⊗ B → E ⊗ A' ⊗ B'. 
 
 Axiom tensor_inc2_r : forall (g : nat -> nat -> prog) m n E A A' B B',
     Singleton A ->
     Singleton B ->
+    Singleton E ->
     g m n :: (A ⊗ B → A' ⊗ B') ->
-    g m (s n) ::  A ⊗ E ⊗ B → A' ⊗ E ⊗ B'. 
+    g m (s n) ::  A ⊗ E ⊗ B → A' ⊗ E ⊗ B'.
 
 (* For flipping CNOTs. Could have CNOT specific rule. *)
 Axiom tensor2_comm : forall (g : nat -> nat -> prog) m n  A A' B B',
@@ -137,6 +140,12 @@ Axiom tensor2_comm : forall (g : nat -> nat -> prog) m n  A A' B B',
     g n m :: B ⊗ A → B' ⊗ A'.
 
 (** Arrow rules *)
+
+(* Does this need restrictions? 
+   If we had g :: X → iX then we could get 
+   g :: I → -I which makes negation meaningless 
+   (and leads to a contradiction if I ∩ -I = ⊥.    
+*)
 
 Axiom arrow_mul : forall p A A' B B',
     p :: A → A' ->
@@ -166,21 +175,36 @@ Hint Resolve HTypes STypes CNOTTypes : typing_db.
 Hint Resolve cap_intro cap_elim_l cap_elim_r : typing_db.
 Hint Resolve arrow_comp : typing_db.
 
+Lemma eq_arrow_r : forall g A B B',
+    g :: A → B ->
+    B = B' ->
+    g :: A → B'.
+Proof. intros; subst; easy. Qed.
+
+(* Reduces to sequence of H, S and CNOT *)
+Ltac type_check_base :=
+  repeat apply cap_intro;
+  repeat eapply arrow_comp; (* will automatically unfold compound progs *)
+  eapply eq_arrow_r;
+  repeat match goal with
+         | |- ?g :: - ?A → ?B => apply arrow_neg
+         | |- ?g :: i ?A → ?B => apply arrow_i
+         | |- ?g :: ?A * ?B → ?C => apply arrow_mul
+         | |- ?g :: ?A → ?B => tryif is_evar A then fail else eauto with base_types_db
+         | |- ?B = ?B' => tryif is_evar B then fail else normalize_mul; easy
+         end.
+
 Lemma ZTypes : Z' 0 :: (X → -X) ∩ (Z → Z).
 Proof.
-  unfold Z'.
-  repeat apply cap_intro.  
-  - repeat eapply arrow_comp.
-    + eauto with base_types_db.
-    + eauto with base_types_db.
-  apply cap_intro.  
-  eapply arrow_comp.
-  
-  
+  type_check_base.
+Qed.
+
 Lemma XTypes : X' 0 :: (X → X) ∩ (Z → -Z).
 Proof.
-  unfold X'.
-  
-  specialize HTypes as H1.
-  apply cap_intro.
-  - 
+  type_check_base.
+Qed.
+
+Lemma YTypes : Y' 0 :: (X → -X) ∩ (Z → -Z).
+Proof.
+  type_check_base.
+Qed.
