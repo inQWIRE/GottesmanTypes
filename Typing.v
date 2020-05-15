@@ -49,7 +49,7 @@ Axiom cap_elim_l : forall g A B, g :: A ∩ B -> g :: A.
 Axiom cap_elim_r : forall g A B, g :: A ∩ B -> g :: B.
 Axiom cap_intro : forall g A B, g :: A -> g :: B -> g :: A ∩ B.
 Axiom cap_arrow : forall g A B C,
-  g :: (A → B) ∩ (A → C) ->    
+  g :: (A → B) ∩ (A → C) ->
   g :: A → (B ∩ C).
 
 Axiom arrow_sub : forall g A A' B B',
@@ -67,9 +67,9 @@ Lemma cap_arrow_distributes : forall g A A' B B',
   g :: (A → A') ∩ (B → B') ->
   g :: (A ∩ B) → (A' ∩ B').
 Proof.
-  intros; apply cap_arrow.  
+  intros; apply cap_arrow.
   apply cap_intro; eauto with subtype_db.
-Qed.  
+Qed.
 
 Lemma cap_arrow_distributes' : forall g A A' B B',
   g :: (A → A') ∩ (B → B') ->
@@ -106,8 +106,8 @@ Notation s := Datatypes.S.
 
 Parameter Singleton : GType -> Prop.
 Axiom SI: Singleton I.
-Axiom SX : Singleton X. 
-Axiom SZ : Singleton Z. 
+Axiom SX : Singleton X.
+Axiom SZ : Singleton Z.
 Axiom S_neg : forall A, Singleton A -> Singleton (neg A).
 Axiom S_i : forall A, Singleton A -> Singleton (i A).
 Axiom S_mul : forall A B, Singleton A -> Singleton B -> Singleton (A * B).
@@ -116,14 +116,14 @@ Axiom tensor_inc : forall g n E A A',
     Singleton A ->
     Singleton E ->
     g n :: (A → A') ->
-    g (s n) ::  E ⊗ A → E ⊗ A'. 
+    g (s n) ::  E ⊗ A → E ⊗ A'.
 
 Axiom tensor_inc2 : forall (g : nat -> nat -> prog) m n E A A' B B',
     Singleton A ->
     Singleton B ->
     Singleton E ->
     g m n :: (A ⊗ B → A' ⊗ B') ->
-    g (s m) (s n) ::  E ⊗ A ⊗ B → E ⊗ A' ⊗ B'. 
+    g (s m) (s n) ::  E ⊗ A ⊗ B → E ⊗ A' ⊗ B'.
 
 Axiom tensor_inc2_r : forall (g : nat -> nat -> prog) m n E A A' B B',
     Singleton A ->
@@ -158,8 +158,8 @@ Axiom arrow_i : forall p A A',
 
 Axiom arrow_neg : forall p A A',
     p :: A → A' ->
-    p :: -A → -A'.  
-  
+    p :: -A → -A'.
+
 Axiom arrow_comp : forall p1 p2 A A' A'',
     p1 :: A → A' ->
     p2 :: A' → A'' ->
