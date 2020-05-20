@@ -90,3 +90,5 @@ Definition teleport : prog := bell'; alice; bob.
 Lemma teleportTypes : teleport :: (X ⊗ I ⊗ I → I ⊗ X ⊗ X) ∩ (Z ⊗ I ⊗ I → X ⊗ I ⊗ Z).
 Proof. type_check_base. Qed.
   
+(* Example 11: Remove XOR *)
+
