@@ -39,8 +39,10 @@ Axiom SeqTypes : forall g1 g2 A B C,
     g2 :: B → C ->
     g1 ; g2 :: A → C.
 
-(* Note that this doesn't restrict # of qubits. *)
+(* Note that this doesn't restrict # of qubits referenced by p. *)
 Axiom TypesI : forall p, p :: I → I.
+Axiom TypesI2 : forall p, p :: I ⊗ I → I ⊗ I.
+Hint Resolve TypesI TypesI2 : base_types_db.
 
 (** Structural rules *)
 
@@ -100,34 +102,33 @@ Proof.
     + eapply cap_elim_r. apply H.
 Qed.
 
-(** Tensor rules *)
+(** Typing Rules for Tensors *)
 
 Notation s := Datatypes.S.
 
-Parameter Singleton : GType -> Prop.
-Axiom SI: Singleton I.
-Axiom SX : Singleton X.
-Axiom SZ : Singleton Z.
-Axiom S_neg : forall A, Singleton A -> Singleton (neg A).
-Axiom S_i : forall A, Singleton A -> Singleton (i A).
-Axiom S_mul : forall A B, Singleton A -> Singleton B -> Singleton (A * B).
+Axiom tensor_base : forall g E A A',
+    Singleton A ->
+    g 0 :: (A → A') ->
+    g 0 ::  A ⊗ E → A' ⊗ E.
 
 Axiom tensor_inc : forall g n E A A',
-    Singleton A ->
     Singleton E ->
     g n :: (A → A') ->
     g (s n) ::  E ⊗ A → E ⊗ A'.
 
-Axiom tensor_inc2 : forall (g : nat -> nat -> prog) m n E A A' B B',
+Axiom tensor_base2 : forall g E A A' B B',
     Singleton A ->
     Singleton B ->
+    g 0 1 :: (A ⊗ B → A' ⊗ B') ->
+    g 0 1 :: (A ⊗ B ⊗ E → A' ⊗ B' ⊗ E).
+
+Axiom tensor_inc2 : forall (g : nat -> nat -> prog) m n E A A' B B',
     Singleton E ->
     g m n :: (A ⊗ B → A' ⊗ B') ->
     g (s m) (s n) ::  E ⊗ A ⊗ B → E ⊗ A' ⊗ B'.
 
 Axiom tensor_inc2_r : forall (g : nat -> nat -> prog) m n E A A' B B',
     Singleton A ->
-    Singleton B ->
     Singleton E ->
     g m n :: (A ⊗ B → A' ⊗ B') ->
     g m (s n) ::  A ⊗ E ⊗ B → A' ⊗ E ⊗ B'.
@@ -181,30 +182,55 @@ Lemma eq_arrow_r : forall g A B B',
     g :: A → B'.
 Proof. intros; subst; easy. Qed.
 
+
+Ltac is_I A :=
+  match A with
+  | I => idtac
+  end.
+
+Ltac is_prog1 A :=
+  match A with
+  | H' => idtac
+  | S' => idtac
+  | T' => idtac
+  end. 
+              
+Ltac is_prog2 A :=
+  match A with
+  | CNOT => idtac
+  end.
+
 (* Reduces to sequence of H, S and CNOT *)
 Ltac type_check_base :=
   repeat apply cap_intro;
   repeat eapply arrow_comp; (* will automatically unfold compound progs *)
-  eapply eq_arrow_r;
   repeat match goal with
-         | |- ?g :: - ?A → ?B => apply arrow_neg
-         | |- ?g :: i ?A → ?B => apply arrow_i
-         | |- ?g :: ?A * ?B → ?C => apply arrow_mul
-         | |- ?g :: ?A → ?B => tryif is_evar A then fail else eauto with base_types_db
-         | |- ?B = ?B' => tryif is_evar B then fail else normalize_mul; easy
+         | |- ?g :: ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
+         | |- ?g :: - ?A → ?B    => apply arrow_neg
+         | |- ?g :: i ?A → ?B    => apply arrow_i
+         | |- context[?A ⊗ ?B]  => progress (autorewrite with tensor_db)
+         | |- ?g :: ?A * ?B → _ => apply arrow_mul
+         | |- ?g :: (?A * ?B) ⊗ I → _ => rewrite decompose_tensor_mult_l; auto with sing_db
+         | |- ?g :: I ⊗ (?A * ?B) → _ => rewrite decompose_tensor_mult_r; auto with sing_db
+         | |- ?g (S _) (S _) :: ?T => apply tensor_inc2; auto with sing_db
+         | |- ?g 0 (S (S _)) :: ?T => apply tensor_inc2_r; auto with sing_db
+         | |- ?g (S _) 0 :: ?T   => apply tensor2_comm; auto with sing_db
+         | |- ?g 0 1 :: ?T       => apply tensor_base2; auto with sing_db
+         | |- ?g (S _) :: ?T     => is_prog1 g; apply tensor_inc; auto with sing_db
+         | |- ?g 0 :: ?T         => is_prog1 g; apply tensor_base; auto with sing_db
+         | |- ?g :: ?A ⊗ ?B → _  => tryif (is_I A + is_I B) then fail else
+             rewrite (decompose_tensor A B); auto with sing_db
+         | |- ?g :: ?A → ?B      => tryif is_evar A then fail else
+             solve [eauto with base_types_db]
+         | |- ?B = ?B'          => tryif is_evar B then fail else
+             (repeat normalize_mul; easy)
          end.
 
 Lemma ZTypes : Z' 0 :: (X → -X) ∩ (Z → Z).
-Proof.
-  type_check_base.
-Qed.
+Proof. type_check_base. Qed.
 
 Lemma XTypes : X' 0 :: (X → X) ∩ (Z → -Z).
-Proof.
-  type_check_base.
-Qed.
+Proof. type_check_base. Qed.
 
 Lemma YTypes : Y' 0 :: (X → -X) ∩ (Z → -Z).
-Proof.
-  type_check_base.
-Qed.
+Proof. type_check_base. Qed.
