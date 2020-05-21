@@ -19,8 +19,14 @@ Lemma superdenseTypes : superdense :: (Z ⊗ I ⊗ I ⊗ I → Z ⊗ I ⊗ I ⊗
                                      (I ⊗ I ⊗ I ⊗ Z → I ⊗ Z ⊗ I ⊗ Z).
 Proof. type_check_base. Qed.
 
+(* Could replace I ⊗ Z ⊗ I ⊗ I with Z 2, I 1, I 3, I 4 *)
+(* From which we derive  Z 2 × (I 1 ⊗ I 3 ⊗ I 4) *)
+
+(* Could also derive I ⊗ Z_s ⊗ I ⊗ I *)
+(* But this doesn't work for the 1st and 3rd being separable from 2nd and 4th. *)
 
 
+  
 (** * GHZ state *)
 
 Definition GHZ3 : prog := H' 0; CNOT 0 1; CNOT 1 2.
@@ -46,9 +52,21 @@ Proof. type_check_base. Qed.
 
 (** Unentangling one qubit *)
 
+(* works *)
 Definition PSEP := GHZ3; CNOT 1 2.
 
-Lemma PSEPTypes : PSEP :: (Z ⊗ I ⊗ I → X ⊗ X ⊗ I) ∩
-                         (I ⊗ Z ⊗ I → Z ⊗ Z ⊗ I) ∩
-                         (I ⊗ I ⊗ Z → I ⊗ I ⊗ Z).
+Lemma PSEPTypes' : PSEP :: (Z ⊗ I ⊗ I → X ⊗ X ⊗ I) ∩
+                          (I ⊗ Z ⊗ I → Z ⊗ Z ⊗ I) ∩
+                          (I ⊗ I ⊗ Z → I ⊗ I ⊗ Z).
 Proof. type_check_base. Qed.
+
+
+Definition PSEP' := GHZ3; CNOT 0 2.
+
+Lemma PSEPTypes : PSEP' :: (Z ⊗ I ⊗ I → X ⊗ X ⊗ I) ∩
+                          (I ⊗ Z ⊗ I → Z ⊗ Z ⊗ I) ∩
+                          (I ⊗ I ⊗ Z → Z ⊗ Z ⊗ Z).
+Proof. type_check_base. Qed.
+
+(* In both cases result should be : (X ⊗ X ∩ Z ⊗ Z) × Z *)
+
