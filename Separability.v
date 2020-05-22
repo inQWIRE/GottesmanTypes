@@ -125,6 +125,23 @@ Proof.
   rewrite <- times_expansion2; auto.
 Qed.  
 
+Lemma times_expansion4 : forall A B C D,
+  Pauli A ->
+  Pauli B ->
+  Pauli C ->
+  Pauli D ->
+  A × B × C × D = A ⊗ I ⊗ I ⊗ I ∩ I ⊗ B ⊗ I ⊗ I ∩ I ⊗ I ⊗ C ⊗ I ∩ I ⊗ I ⊗ I ⊗ D.
+Proof.
+  intros.
+  rewrite (all_I_separable_l A); auto with sep_db.
+  rewrite separable_cap_I; auto.
+  rewrite (cap_I_l_gen (B ⊗ I ⊗ I)); auto with sep_db.
+  rewrite separable_cap_I; auto.
+  rewrite separable_cap_I; auto.
+  rewrite <- times_expansion3; auto.
+Qed.  
+
+
   (* Examples *)
 
 
