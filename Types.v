@@ -36,6 +36,7 @@ Infix "∩" := cap (at level 60, no associativity).
 Notation Y := (i (X * Z)).
 
 (* Singleton Types *)
+(* Could probably safely make this inductive. Can't do inversion on GTypes anyhow. *)
 
 Parameter Singleton : GType -> Prop.
 Axiom SI: Singleton I.
