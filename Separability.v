@@ -134,7 +134,7 @@ Proof.
   rewrite <- sep_expansion2; auto.
 Qed.  
 
-Lemma times_expansion4 : forall A B C D,
+Lemma sep_expansion4 : forall A B C D,
   Pauli A ->
   Pauli B ->
   Pauli C ->
@@ -277,3 +277,32 @@ Proof.
 Qed.
 
       
+(** ** Superdense Coding *)
+
+Search superdense.
+
+Lemma superdense_types_sep : superdense :: Z × Z × Z × Z → Z × Z × Z × Z.
+Proof.
+  rewrite sep_expansion4 at 1; auto with sep_db.
+  eapply eq_arrow_r.
+  apply cap_arrow_distributes; apply cap_intro.
+  apply cap_arrow_distributes; apply cap_intro.
+  apply cap_arrow_distributes; apply cap_intro.
+  type_check_base.
+  type_check_base.
+  type_check_base.
+  type_check_base.
+  normalize_mul.
+  rewrite (all_I_sep_l Z); auto with sep_db.
+  rewrite sep_cap_I_l; auto with sep_db.
+  rewrite (cap_I_l_gen (Z ⊗ I ⊗ I)); auto with sep_db.
+  rewrite (all_I_sep_l Z); auto with sep_db.
+  rewrite sep_cap_same_l; auto with sep_db.
+  rewrite sep_cap_I_l; auto with sep_db.
+  rewrite sep_cap_I_l; auto with sep_db.
+  rewrite (cap_I_l_gen (Z ⊗ I)); auto with sep_db.
+  rewrite sep_cap_same_l; auto with sep_db.
+  rewrite (all_I_sep_l Z); auto with sep_db.
+  rewrite sep_cap_I_l; auto with sep_db.
+  rewrite cap_I_l; auto with sep_db.
+Qed.
