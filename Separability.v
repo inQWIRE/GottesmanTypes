@@ -1,4 +1,4 @@
-Require Import Typing.
+Require Export Typing.
 Require Import MoreExamples.
 Require Import Setoid.
 
@@ -103,12 +103,12 @@ Axiom sep_cap_same_r : forall A B C,
 
 
 (* Not valid. Hence: I ⊗ I <> I × I. *)
-Lemma bad_expansion : X ⊗ I ⊗ I = X × I × I.
+Lemma invalid_expansion : X ⊗ I ⊗ I = X × I × I.
 Proof.
   rewrite all_I_sep_l; auto with sep_db sing_db.
   rewrite all_I_sep_r; auto with sep_db sing_db.
 Abort.
-  
+
 Lemma sep_expansion2 : forall A B,
   Pauli A ->
   Pauli B ->
@@ -119,7 +119,7 @@ Proof.
   rewrite sep_cap_I_l; auto.
   rewrite cap_I_l; auto with sep_db.
 Qed.
-
+    
 Lemma sep_expansion3 : forall A B C,
   Pauli A ->
   Pauli B ->
@@ -279,8 +279,6 @@ Qed.
       
 (** ** Superdense Coding *)
 
-Search superdense.
-
 Lemma superdense_types_sep : superdense :: Z × Z × Z × Z → Z × Z × Z × Z.
 Proof.
   rewrite sep_expansion4 at 1; auto with sep_db.
@@ -306,3 +304,62 @@ Proof.
   rewrite sep_cap_I_l; auto with sep_db.
   rewrite cap_I_l; auto with sep_db.
 Qed.
+
+(*
+
+(* Attempt to generalize sep_expansion lemmas. *)
+
+Require Import List.
+
+Parameter bot : GType.
+Notation "⊥" := bot.
+Parameter tensor_id : GType.
+Notation "∅" := tensor_id.
+Axiom tensor_id_l : forall A, ∅ ⊗ A = A.
+Axiom tensor_id_r : forall A, A ⊗ ∅ = A.
+Axiom times_id_l : forall A, ∅ × A = A.
+Axiom times_id_r : forall A, A × ∅ = A.
+
+Fixpoint big_times (l : list GType) : GType :=
+  match l with
+  | nil => ∅
+  | cons A TS => A × big_times TS
+  end.
+
+Fixpoint repeat_I (n : nat) : GType :=
+  match n with
+  | 0 => ∅
+  | s n' => I ⊗ repeat_I n'
+  end.
+
+Definition pauli_at (A : GType) (m n : nat) : GType :=
+  repeat_I m ⊗ A ⊗ repeat_I n.
+
+Fixpoint to_sep_list' (l : list GType) (m n : nat) :=
+  match n with
+  | 0    => pauli_at (hd ⊥ l) m 0
+  | s n' => pauli_at (hd ⊥ l) m n ∩ to_sep_list' (tl l) (s m) n'
+  end.
+
+Definition to_sep_list (l : list GType) := to_sep_list' l 0 (length l - 1).
+
+Lemma sep_expansion : forall (l : list GType),
+  length l <> 0 ->
+  Forall Pauli l ->
+  big_times l = to_sep_list l.
+Proof.
+  intros.
+  induction l; try contradiction.
+  destruct l as [| b l].
+  - cbv.
+    rewrite tensor_id_l, tensor_id_r, times_id_r.
+    easy.
+  - unfold to_sep_list in *.
+    simpl in *.
+    rewrite IHl; inversion H0; subst; try easy.
+    unfold pauli_at. simpl.
+    rewrite tensor_id_l.
+(* works, but not worth it. We'll use Ltac. *)
+Abort.
+
+*)
