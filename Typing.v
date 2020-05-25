@@ -205,26 +205,31 @@ Ltac type_check_base :=
   repeat apply cap_intro;
   repeat eapply arrow_comp; (* will automatically unfold compound progs *)
   repeat match goal with
+         | |- Singleton _       => auto 50 with sing_db
          | |- ?g :: ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
          | |- ?g :: - ?A → ?B    => apply arrow_neg
          | |- ?g :: i ?A → ?B    => apply arrow_i
          | |- context[?A ⊗ ?B]  => progress (autorewrite with tensor_db)
          | |- ?g :: ?A * ?B → _ => apply arrow_mul
-         | |- ?g :: (?A * ?B) ⊗ I → _ => rewrite decompose_tensor_mult_l; auto with sing_db
-         | |- ?g :: I ⊗ (?A * ?B) → _ => rewrite decompose_tensor_mult_r; auto with sing_db
-         | |- ?g (S _) (S _) :: ?T => apply tensor_inc2; auto with sing_db
-         | |- ?g 0 (S (S _)) :: ?T => apply tensor_inc2_r; auto with sing_db
-         | |- ?g (S _) 0 :: ?T   => apply tensor2_comm; auto with sing_db
-         | |- ?g 0 1 :: ?T       => apply tensor_base2; auto with sing_db
-         | |- ?g (S _) :: ?T     => is_prog1 g; apply tensor_inc; auto with sing_db
-         | |- ?g 0 :: ?T         => is_prog1 g; apply tensor_base; auto with sing_db
+         | |- ?g :: (?A * ?B) ⊗ I → _ => rewrite decompose_tensor_mult_l
+         | |- ?g :: I ⊗ (?A * ?B) → _ => rewrite decompose_tensor_mult_r
+         | |- ?g (S _) (S _) :: ?T => apply tensor_inc2
+         | |- ?g 0 (S (S _)) :: ?T => apply tensor_inc2_r
+         | |- ?g (S _) 0 :: ?T   => apply tensor2_comm
+         | |- ?g 0 1 :: ?T       => apply tensor_base2
+         | |- ?g (S _) :: ?T     => is_prog1 g; apply tensor_inc
+         | |- ?g 0 :: ?T         => is_prog1 g; apply tensor_base
          | |- ?g :: ?A ⊗ ?B → _  => tryif (is_I A + is_I B) then fail else
-             rewrite (decompose_tensor A B); auto with sing_db
+             rewrite (decompose_tensor A B) by (auto 50 with sing_db)
          | |- ?g :: ?A → ?B      => tryif is_evar A then fail else
              solve [eauto with base_types_db]
-         | |- ?B = ?B'          => tryif is_evar B then fail else
-             (repeat rewrite mul_tensor_dist); auto with sing_db;
-             (repeat normalize_mul); easy
+         | |- ?B = ?B'          => tryif has_evar B then fail else
+            (repeat rewrite mul_tensor_dist);
+            (repeat normalize_mul);
+            (repeat rewrite <- i_tensor_dist_l);
+            (repeat rewrite <- neg_tensor_dist_l);
+            autorewrite with mul_db;
+            try reflexivity
          end.
 
 Lemma ZTypes : Z' 0 :: (X → -X) ∩ (Z → Z).
