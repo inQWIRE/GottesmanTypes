@@ -39,6 +39,9 @@ Axiom SeqTypes : forall g1 g2 A B C,
     g2 :: B → C ->
     g1 ; g2 :: A → C.
 
+Axiom seq_assoc : forall p1 p2 p3 A,
+    p1 ; (p2 ; p3) :: A <-> (p1 ; p2) ; p3 :: A.
+
 (* Note that this doesn't restrict # of qubits referenced by p. *)
 Axiom TypesI : forall p, p :: I → I.
 Axiom TypesI2 : forall p, p :: I ⊗ I → I ⊗ I.
@@ -122,16 +125,28 @@ Axiom tensor_base2 : forall g E A A' B B',
     g 0 1 :: (A ⊗ B → A' ⊗ B') ->
     g 0 1 :: (A ⊗ B ⊗ E → A' ⊗ B' ⊗ E).
 
+Axiom tensor_base2_inv : forall g E A A' B B',
+    Singleton A ->
+    Singleton B ->
+    g 0 1 :: (B ⊗ A → B' ⊗ A') ->
+    g 1 0 :: (A ⊗ B ⊗ E → A' ⊗ B' ⊗ E).
+
 Axiom tensor_inc2 : forall (g : nat -> nat -> prog) m n E A A' B B',
     Singleton E ->
     g m n :: (A ⊗ B → A' ⊗ B') ->
     g (s m) (s n) ::  E ⊗ A ⊗ B → E ⊗ A' ⊗ B'.
 
-Axiom tensor_inc2_r : forall (g : nat -> nat -> prog) m n E A A' B B',
+Axiom tensor_inc_l : forall (g : nat -> nat -> prog) m E A A' B B',
     Singleton A ->
     Singleton E ->
-    g m n :: (A ⊗ B → A' ⊗ B') ->
-    g m (s n) ::  A ⊗ E ⊗ B → A' ⊗ E ⊗ B'.
+    g m 0 :: (A ⊗ B → A' ⊗ B') ->
+    g (s m) 0 ::  A ⊗ E ⊗ B → A' ⊗ E ⊗ B'.
+
+Axiom tensor_inc_r : forall (g : nat -> nat -> prog) n E A A' B B',
+    Singleton A ->
+    Singleton E ->
+    g 0 n :: (A ⊗ B → A' ⊗ B') ->
+    g 0 (s n) ::  A ⊗ E ⊗ B → A' ⊗ E ⊗ B'.
 
 (* For flipping CNOTs. Could have CNOT specific rule. *)
 Axiom tensor2_comm : forall (g : nat -> nat -> prog) m n  A A' B B',
@@ -139,6 +154,7 @@ Axiom tensor2_comm : forall (g : nat -> nat -> prog) m n  A A' B B',
     Singleton B ->
     g m n :: A ⊗ B → A' ⊗ B' ->
     g n m :: B ⊗ A → B' ⊗ A'.
+
 
 (** Arrow rules *)
 
@@ -161,20 +177,12 @@ Axiom arrow_neg : forall p A A',
     p :: A → A' ->
     p :: -A → -A'.
 
-Axiom arrow_comp : forall p1 p2 A A' A'',
-    p1 :: A → A' ->
-    p2 :: A' → A'' ->
-    p1 ; p2 :: A → A''.
-
-Axiom seq_assoc : forall p1 p2 p3 A,
-    p1 ; (p2 ; p3) :: A <-> (p1 ; p2) ; p3 :: A.
-
 Hint Resolve HTypes STypes CNOTTypes : base_types_db.
 Hint Resolve cap_elim_l cap_elim_r : base_types_db.
 
 Hint Resolve HTypes STypes CNOTTypes : typing_db.
 Hint Resolve cap_intro cap_elim_l cap_elim_r : typing_db.
-Hint Resolve arrow_comp : typing_db.
+Hint Resolve SeqTypes : typing_db.
 
 Lemma eq_arrow_r : forall g A B B',
     g :: A → B ->
@@ -203,7 +211,7 @@ Ltac is_prog2 A :=
 (* Reduces to sequence of H, S and CNOT *)
 Ltac type_check_base :=
   repeat apply cap_intro;
-  repeat eapply arrow_comp; (* will automatically unfold compound progs *)
+  repeat eapply SeqTypes; (* will automatically unfold compound progs *)
   repeat match goal with
          | |- Singleton _       => auto 50 with sing_db
          | |- ?g :: ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
@@ -214,9 +222,11 @@ Ltac type_check_base :=
          | |- ?g :: (?A * ?B) ⊗ I → _ => rewrite decompose_tensor_mult_l
          | |- ?g :: I ⊗ (?A * ?B) → _ => rewrite decompose_tensor_mult_r
          | |- ?g (S _) (S _) :: ?T => apply tensor_inc2
-         | |- ?g 0 (S (S _)) :: ?T => apply tensor_inc2_r
-         | |- ?g (S _) 0 :: ?T   => apply tensor2_comm
+         | |- ?g 0 (S (S _)) :: ?T => apply tensor_inc_r
+         | |- ?g (S (S _)) 0 :: ?T => apply tensor_inc_l
+         | |- ?g 1 0 :: ?T       => apply tensor_base2_inv
          | |- ?g 0 1 :: ?T       => apply tensor_base2
+         | |- ?g 1 0 :: ?T       => apply tensor2_comm
          | |- ?g (S _) :: ?T     => is_prog1 g; apply tensor_inc
          | |- ?g 0 :: ?T         => is_prog1 g; apply tensor_base
          | |- ?g :: ?A ⊗ ?B → _  => tryif (is_I A + is_I B) then fail else

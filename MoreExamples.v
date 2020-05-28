@@ -48,25 +48,62 @@ Lemma SEP0Types : SEP0 :: (Z ⊗ I ⊗ I → X ⊗ I ⊗ I) ∩
                          (I ⊗ I ⊗ Z → I ⊗ Z ⊗ Z).
 Proof. type_check_base. Qed.
 
+Definition SEP0' := GHZ3; CNOT 1 0; CNOT 2 1.
+
+Lemma SEP0Types' : SEP0' :: (Z ⊗ I ⊗ I → I ⊗ I ⊗ X) ∩
+                           (I ⊗ Z ⊗ I → Z ⊗ I ⊗ I) ∩
+                           (I ⊗ I ⊗ Z → I ⊗ Z ⊗ I).
+Proof. type_check_base. Qed.
+
+
 (* Result : X × Z × Z *)
 
 (** Unentangling one qubit *)
+Definition PSEP01 := GHZ3; CNOT 0 1.
+
+Lemma PSEPTypes01 : PSEP01 :: (Z ⊗ I ⊗ I → X ⊗ I ⊗ X) ∩
+                             (I ⊗ Z ⊗ I → I ⊗ Z ⊗ I) ∩
+                             (I ⊗ I ⊗ Z → Z ⊗ Z ⊗ Z).
+Proof. type_check_base. Qed.
+
+
+Definition PSEP10 := GHZ3; CNOT 1 0.
+
+Lemma PSEPTypes10 : PSEP10 :: (Z ⊗ I ⊗ I → I ⊗ X ⊗ X) ∩
+                             (I ⊗ Z ⊗ I → Z ⊗ I ⊗ I) ∩
+                             (I ⊗ I ⊗ Z → I ⊗ Z ⊗ Z).
+Proof. type_check_base. Qed.
+
+
+Definition PSEP02 := GHZ3; CNOT 0 2.
+
+Lemma PSEPTypes02 : PSEP02 :: (Z ⊗ I ⊗ I → X ⊗ X ⊗ I) ∩
+                             (I ⊗ Z ⊗ I → Z ⊗ Z ⊗ I) ∩
+                             (I ⊗ I ⊗ Z → Z ⊗ Z ⊗ Z).
+Proof. type_check_base. Qed.
+
+Definition PSEP20 := GHZ3; CNOT 2 0.
+
+Lemma PSEPTypes20 : PSEP20 :: (Z ⊗ I ⊗ I → I ⊗ X ⊗ X) ∩
+                             (I ⊗ Z ⊗ I → Z ⊗ Z ⊗ Z) ∩
+                             (I ⊗ I ⊗ Z → I ⊗ Z ⊗ Z).
+Proof. type_check_base. Qed.
+
 
 (* works *)
-Definition PSEP := GHZ3; CNOT 1 2.
+Definition PSEP12 := GHZ3; CNOT 1 2.
 
-Lemma PSEPTypes' : PSEP :: (Z ⊗ I ⊗ I → X ⊗ X ⊗ I) ∩
-                          (I ⊗ Z ⊗ I → Z ⊗ Z ⊗ I) ∩
-                          (I ⊗ I ⊗ Z → I ⊗ I ⊗ Z).
+Lemma PSEPTypes12 : PSEP12 :: (Z ⊗ I ⊗ I → X ⊗ X ⊗ I) ∩
+                             (I ⊗ Z ⊗ I → Z ⊗ Z ⊗ I) ∩
+                             (I ⊗ I ⊗ Z → I ⊗ I ⊗ Z).
 Proof. type_check_base. Qed.
 
+Definition PSEP21 := GHZ3; CNOT 2 1.
 
-Definition PSEP' := GHZ3; CNOT 0 2.
-
-Lemma PSEPTypes : PSEP' :: (Z ⊗ I ⊗ I → X ⊗ X ⊗ I) ∩
-                          (I ⊗ Z ⊗ I → Z ⊗ Z ⊗ I) ∩
-                          (I ⊗ I ⊗ Z → Z ⊗ Z ⊗ Z).
+Lemma PSEPTypes21 : PSEP21 :: (Z ⊗ I ⊗ I → X ⊗ I ⊗ X) ∩
+                             (I ⊗ Z ⊗ I → Z ⊗ Z ⊗ Z) ∩
+                             (I ⊗ I ⊗ Z → I ⊗ Z ⊗ I).
 Proof. type_check_base. Qed.
 
-(* In both cases result should be : (X ⊗ X ∩ Z ⊗ Z) × Z *)
+(* In all cases results should have one qubit unentangled *)
 
