@@ -149,12 +149,14 @@ Axiom tensor_inc_r : forall (g : nat -> nat -> prog) n E A A' B B',
     g 0 (s n) ::  A ⊗ E ⊗ B → A' ⊗ E ⊗ B'.
 
 (* For flipping CNOTs. Could have CNOT specific rule. *)
-Axiom tensor2_comm : forall (g : nat -> nat -> prog) m n  A A' B B',
+Axiom tensor2_comm : forall (g : nat -> nat -> prog)  A A' B B',
     Singleton A ->
     Singleton B ->
-    g m n :: A ⊗ B → A' ⊗ B' ->
-    g n m :: B ⊗ A → B' ⊗ A'.
+    g 0 1 :: A ⊗ B → A' ⊗ B' ->
+    g 1 0 :: B ⊗ A → B' ⊗ A'.
 
+                      
+                 
 
 (** Arrow rules *)
 

@@ -59,6 +59,8 @@ Proof. type_check_base. Qed.
 (* Result : X × Z × Z *)
 
 (** Unentangling one qubit *)
+
+(* works modulo ordering *)
 Definition PSEP01 := GHZ3; CNOT 0 1.
 
 Lemma PSEPTypes01 : PSEP01 :: (Z ⊗ I ⊗ I → X ⊗ I ⊗ X) ∩
@@ -66,7 +68,7 @@ Lemma PSEPTypes01 : PSEP01 :: (Z ⊗ I ⊗ I → X ⊗ I ⊗ X) ∩
                              (I ⊗ I ⊗ Z → Z ⊗ Z ⊗ Z).
 Proof. type_check_base. Qed.
 
-
+(* works *)
 Definition PSEP10 := GHZ3; CNOT 1 0.
 
 Lemma PSEPTypes10 : PSEP10 :: (Z ⊗ I ⊗ I → I ⊗ X ⊗ X) ∩
@@ -74,7 +76,7 @@ Lemma PSEPTypes10 : PSEP10 :: (Z ⊗ I ⊗ I → I ⊗ X ⊗ X) ∩
                              (I ⊗ I ⊗ Z → I ⊗ Z ⊗ Z).
 Proof. type_check_base. Qed.
 
-
+(* doesn't work *)
 Definition PSEP02 := GHZ3; CNOT 0 2.
 
 Lemma PSEPTypes02 : PSEP02 :: (Z ⊗ I ⊗ I → X ⊗ X ⊗ I) ∩
@@ -82,6 +84,7 @@ Lemma PSEPTypes02 : PSEP02 :: (Z ⊗ I ⊗ I → X ⊗ X ⊗ I) ∩
                              (I ⊗ I ⊗ Z → Z ⊗ Z ⊗ Z).
 Proof. type_check_base. Qed.
 
+(* doesn't work *)
 Definition PSEP20 := GHZ3; CNOT 2 0.
 
 Lemma PSEPTypes20 : PSEP20 :: (Z ⊗ I ⊗ I → I ⊗ X ⊗ X) ∩
@@ -98,6 +101,7 @@ Lemma PSEPTypes12 : PSEP12 :: (Z ⊗ I ⊗ I → X ⊗ X ⊗ I) ∩
                              (I ⊗ I ⊗ Z → I ⊗ I ⊗ Z).
 Proof. type_check_base. Qed.
 
+(* works modulo ordering *)
 Definition PSEP21 := GHZ3; CNOT 2 1.
 
 Lemma PSEPTypes21 : PSEP21 :: (Z ⊗ I ⊗ I → X ⊗ I ⊗ X) ∩

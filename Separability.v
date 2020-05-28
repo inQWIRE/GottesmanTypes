@@ -257,7 +257,7 @@ Qed.
 
 (** Unentangling one qubit *)
 
-Lemma PSEP_ZZZ : PSEP :: Z × Z × Z → (X ⊗ X ∩ Z ⊗ Z) × Z.
+Lemma PSEP10_ZZZ : PSEP10 :: Z × Z × Z → Z × (X ⊗ X ∩ Z ⊗ Z).
 Proof.
   rewrite sep_expansion3 at 1; auto with sep_db.
   eapply eq_arrow_r.
@@ -267,15 +267,12 @@ Proof.
   type_check_base.
   type_check_base.
   normalize_mul.
-  repeat rewrite tensor_assoc.
-  rewrite (all_I_sep_r Z (I ⊗ I)); auto with sep_db.
-  rewrite cap_comm.
-  rewrite cap_assoc.
-  rewrite sep_cap_I_r; auto with sep_db.
-  rewrite sep_cap_I_r; auto with sep_db.
+  rewrite (cap_comm (I ⊗ _)).
+  rewrite (all_I_sep_l Z (I ⊗ I)); auto with sep_db.
+  rewrite sep_cap_I_l; auto with sep_db.
+  rewrite sep_cap_I_l; auto with sep_db.
   rewrite (cap_I_l_gen (X ⊗ X)); auto with sep_db.
 Qed.
-
       
 (** ** Superdense Coding *)
 
