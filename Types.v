@@ -72,7 +72,8 @@ Axiom i_neg_comm : forall A, i (-A) = -i A.
 
 Hint Rewrite mul_I_l mul_I_r Xsqr Zsqr ZmulX neg_inv neg_dist_l neg_dist_r i_sqr i_dist_l i_dist_r i_neg_comm : mul_db.
 
-(** Tensor Laws *)
+(** ** Tensor Laws *)
+
 Axiom tensor_assoc : forall A B C, A ⊗ (B ⊗ C) = (A ⊗ B) ⊗ C.  
 
 Axiom neg_tensor_dist_l : forall A B, -A ⊗ B = - (A ⊗ B).
@@ -80,7 +81,7 @@ Axiom neg_tensor_dist_r : forall A B, A ⊗ -B = - (A ⊗ B).
 Axiom i_tensor_dist_l : forall A B, i A ⊗ B = i (A ⊗ B).
 Axiom i_tensor_dist_r : forall A B, A ⊗ i B = i (A ⊗ B).
 
-(** Multiplication + Tensor *)
+(** ** Multiplication & Tensor Laws *)
 
 (* Appropriate restriction is that size A = size C and size B = size D,
    but axiomatization doesn't allow for that calculation. *)
@@ -98,7 +99,7 @@ Lemma decompose_tensor : forall A B,
 Proof.
   intros.
   rewrite mul_tensor_dist; auto with sing_db.
-  rewrite mul_I_l, mul_I_r. (* rename to mul_I_l, mul_I_r *)
+  rewrite mul_I_l, mul_I_r. 
   easy.
 Qed.
 
@@ -123,6 +124,24 @@ Proof.
 Qed.
   
 Hint Rewrite neg_tensor_dist_l neg_tensor_dist_r i_tensor_dist_l i_tensor_dist_r : tensor_db.
+
+(** ** Intersection Laws *)
+
+Axiom cap_idem : forall A, A ∩ A = A.
+
+Axiom cap_comm : forall A B, A ∩ B = B ∩ A.
+
+Axiom cap_assoc : forall A B C, A ∩ (B ∩ C) = (A ∩ B) ∩ C.
+
+Axiom cap_I_l : forall A,
+  Singleton A ->
+  I ∩ A = A.
+
+Lemma cap_I_r : forall A,
+  Singleton A ->
+  A ∩ I = A.
+Proof. intros; rewrite cap_comm, cap_I_l; easy. Qed.
+
 
 (* Note: I haven't proven that this works or terminates.
    An anticommutative monoidal solver would be ideal here. *)

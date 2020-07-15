@@ -1,5 +1,3 @@
-Require Import Types.
-Require Import Typing.
 Require Import Separability.
 
 (** * The Top type *)

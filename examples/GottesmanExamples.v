@@ -1,6 +1,6 @@
 (** * Examples from Gottesman Paper *)
 
-Require Import Typing.
+Require Import Programs.
 
 (* Example 1 *)
 

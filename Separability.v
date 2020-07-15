@@ -1,22 +1,5 @@
-Require Export Typing.
-Require Import MoreExamples.
+Require Export Programs.
 Require Import Setoid.
-
-(* Intersection rules *)
-Axiom cap_idem : forall A, A ∩ A = A.
-
-Axiom cap_comm : forall A B, A ∩ B = B ∩ A.
-
-Axiom cap_assoc : forall A B C, A ∩ (B ∩ C) = (A ∩ B) ∩ C.
-
-Axiom cap_I_l : forall A,
-  Singleton A ->
-  I ∩ A = A.
-
-Lemma cap_I_r : forall A,
-  Singleton A ->
-  A ∩ I = A.
-Proof. intros; rewrite cap_comm, cap_I_l; easy. Qed.
 
 (* Non-I Singleton's *)
 Inductive Pauli : GType -> Prop :=
@@ -233,74 +216,7 @@ Proof.
   rewrite sep_cap_I_r; auto with sep_db.
   rewrite cap_I_l; auto with sing_db.
 Qed.
-
-(** ** GHZ SEP *)
-
-Lemma SEP0_ZZZ : SEP0 :: Z × Z × Z → X × Z × Z.
-Proof.
-  rewrite sep_expansion3 at 1; auto with sep_db.
-  eapply eq_arrow_r.
-  apply cap_arrow_distributes; apply cap_intro.
-  apply cap_arrow_distributes; apply cap_intro.
-  type_check_base.
-  type_check_base.
-  type_check_base.
-  normalize_mul.
-  rewrite (all_I_sep_l X _); auto with sep_db.
-  rewrite sep_cap_I_l; auto with sep_db.
-  rewrite sep_cap_I_l; auto with sep_db.
-  rewrite (cap_I_l_gen (Z ⊗ I)); auto with sep_db.
-  rewrite (all_I_sep_l Z I); auto with sep_db.
-  rewrite sep_cap_same_l; auto with sep_db.
-  rewrite cap_I_l; auto with sing_db.
-Qed.
-
-(** Unentangling one qubit *)
-
-Lemma PSEP10_ZZZ : PSEP10 :: Z × Z × Z → Z × (X ⊗ X ∩ Z ⊗ Z).
-Proof.
-  rewrite sep_expansion3 at 1; auto with sep_db.
-  eapply eq_arrow_r.
-  apply cap_arrow_distributes; apply cap_intro.
-  apply cap_arrow_distributes; apply cap_intro.
-  type_check_base.
-  type_check_base.
-  type_check_base.
-  normalize_mul.
-  rewrite (cap_comm (I ⊗ _)).
-  rewrite (all_I_sep_l Z (I ⊗ I)); auto with sep_db.
-  rewrite sep_cap_I_l; auto with sep_db.
-  rewrite sep_cap_I_l; auto with sep_db.
-  rewrite (cap_I_l_gen (X ⊗ X)); auto with sep_db.
-Qed.
       
-(** ** Superdense Coding *)
-
-Lemma superdense_types_sep : superdense :: Z × Z × Z × Z → Z × Z × Z × Z.
-Proof.
-  rewrite sep_expansion4 at 1; auto with sep_db.
-  eapply eq_arrow_r.
-  apply cap_arrow_distributes; apply cap_intro.
-  apply cap_arrow_distributes; apply cap_intro.
-  apply cap_arrow_distributes; apply cap_intro.
-  type_check_base.
-  type_check_base.
-  type_check_base.
-  type_check_base.
-  normalize_mul.
-  rewrite (all_I_sep_l Z); auto with sep_db.
-  rewrite sep_cap_I_l; auto with sep_db.
-  rewrite (cap_I_l_gen (Z ⊗ I ⊗ I)); auto with sep_db.
-  rewrite (all_I_sep_l Z); auto with sep_db.
-  rewrite sep_cap_same_l; auto with sep_db.
-  rewrite sep_cap_I_l; auto with sep_db.
-  rewrite sep_cap_I_l; auto with sep_db.
-  rewrite (cap_I_l_gen (Z ⊗ I)); auto with sep_db.
-  rewrite sep_cap_same_l; auto with sep_db.
-  rewrite (all_I_sep_l Z); auto with sep_db.
-  rewrite sep_cap_I_l; auto with sep_db.
-  rewrite cap_I_l; auto with sep_db.
-Qed.
 
 (*
 

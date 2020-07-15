@@ -1,8 +1,10 @@
 -R . Top
 
 Types.v
-Typing.v
-GottesmanExamples.v
-MoreExamples.v
+Programs.v
 Separability.v
-Toffoli.v
+DerivedGates.v
+examples/GottesmanExamples.v
+examples/GHZ.v
+examples/Superdense.v
+examples/Toffoli.v
