@@ -12,17 +12,6 @@ Inductive prog :=
 
 Infix ";" := seq (at level 51, right associativity).
 
-(* I, X, Y and Z as derived gates *)
-Definition Z' n : prog := S' n ; S' n.
-Definition X' n : prog := H' n ; Z' n; H' n.
-Definition Y' n : prog := S' n; X' n; Z' n; S' n.
-Definition I' n : prog := H' n; H' n.
-
-(* Other common gates *)
-Definition CZ m n : prog := H' n ; CNOT m n ; H' n.
-Definition SWAP m n : prog := CNOT m n; CNOT n m; CNOT m n.
-
-
 (** Basic Typing judgements *)
 
 Parameter has_type : prog -> GType -> Prop.
@@ -182,10 +171,10 @@ Axiom arrow_neg : forall p A A',
     p :: A → A' ->
     p :: -A → -A'.
 
-Hint Resolve HTypes STypes CNOTTypes : base_types_db.
+Hint Resolve HTypes STypes TTypes CNOTTypes : base_types_db.
 Hint Resolve cap_elim_l cap_elim_r : base_types_db.
 
-Hint Resolve HTypes STypes CNOTTypes : typing_db.
+Hint Resolve HTypes STypes TTypes CNOTTypes : typing_db.
 Hint Resolve cap_intro cap_elim_l cap_elim_r : typing_db.
 Hint Resolve SeqTypes : typing_db.
 

@@ -1,4 +1,4 @@
-Require Import Programs.
+Require Export Programs.
 
 (* I, X, Y and Z as derived gates *)
 Definition Z' n : prog := S' n ; S' n.

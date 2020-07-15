@@ -1,6 +1,6 @@
 (** * Examples from Gottesman Paper *)
 
-Require Import Programs.
+Require Import DerivedGates.
 
 (* Example 1 *)
 

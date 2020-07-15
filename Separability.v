@@ -1,4 +1,5 @@
 Require Export Programs.
+Require Export DerivedGates.
 Require Import Setoid.
 
 (* Non-I Singleton's *)
