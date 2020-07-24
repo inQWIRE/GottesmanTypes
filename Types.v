@@ -1,96 +1,124 @@
 (** Types *)
-
-(* This won't work with equality due to inversion.
-Inductive coefficient :=
-| Gi
-| Gneg.
+Require Export List.
+Import ListNotations.
 
 Inductive GType :=
-| I
-| X
-| Z
-| scale : coefficient -> GType -> GType
+| I : GType
+| X : GType
+| Z : GType
+| i : GType -> GType
+| neg : GType -> GType
 | mul : GType -> GType -> GType
-| tensor : GType -> GType -> GType
+| tensor : list GType ->  GType
 | cap : GType -> GType -> GType
-| arrow : GType -> GType -> GType.
- *)
+| arrow : GType -> GType -> GType
+| blank : GType
+| times : GType -> GType -> GType.
 
-Parameter GType : Type.
-Parameter I : GType.
-Parameter X : GType.
-Parameter Z : GType.
-Parameter i : GType -> GType.
-Parameter neg : GType -> GType.
-Parameter mul : GType -> GType -> GType.
-Parameter tensor : GType -> GType -> GType.
-Parameter cap : GType -> GType -> GType.
-Parameter arrow : GType -> GType -> GType.
-
+Notation "A ⊗ B ⊗ .. ⊗ Z" := (tensor (cons A (cons B .. (cons Z nil) ..))) (at level 50).
+Notation "'_'" := blank.
 Notation "- T" := (neg T).
 Infix "*" := mul (at level 40, left associativity).
-Infix "⊗" := tensor (at level 51, right associativity).
+Infix "×" := times (at level 60, no associativity).
 Infix "→" := arrow (at level 60, no associativity).
 Infix "∩" := cap (at level 60, no associativity).
 
 Notation Y := (i (X * Z)).
 
-(* Singleton Types *)
-(* Could probably safely make this inductive. Can't do inversion on GTypes anyhow. *)
-
-Parameter Singleton : GType -> Prop.
-Axiom SI: Singleton I.
-Axiom SX : Singleton X.
-Axiom SZ : Singleton Z.
-Axiom S_neg : forall A, Singleton A -> Singleton (neg A).
-Axiom S_i : forall A, Singleton A -> Singleton (i A).
-Axiom S_mul : forall A B, Singleton A -> Singleton B -> Singleton (A * B).
+Inductive Singleton : GType -> Prop :=
+| SI : Singleton I
+| SX : Singleton X
+| SZ : Singleton Z
+| S_neg : forall A, Singleton A -> Singleton (neg A)
+| S_i :   forall A, Singleton A -> Singleton (i A)
+| S_mul : forall A B, Singleton A -> Singleton B -> Singleton (A * B).
 
 Hint Resolve SI SX SZ S_neg S_i S_mul : sing_db.
 
 Lemma SY : Singleton Y.
 Proof. auto with sing_db. Qed.
 
+Parameter Geq : GType -> GType -> Prop.
+Infix "==" := Geq (at level 100).
+
 (* Multiplication laws *)
 
-Axiom mul_assoc : forall A B C, A * (B * C) = A * B * C.
-Axiom mul_I_l : forall A, I * A = A.
-Axiom mul_I_r : forall A, A * I = A.
-Axiom Xsqr : X * X = I.
-Axiom Zsqr : Z * Z = I.
-Axiom ZmulX : Z * X = - (X * Z).
+Axiom mul_assoc : forall A B C, A * (B * C) == A * B * C.
+Axiom mul_I_l : forall A, I * A == A.
+Axiom mul_I_r : forall A, A * I == A.
+Axiom Xsqr : X * X == I.
+Axiom Zsqr : Z * Z == I.
+Axiom ZmulX : Z * X == - (X * Z).
 
-Axiom neg_inv : forall A, - - A = A.
-Axiom neg_dist_l : forall A B, -A * B = - (A * B).
-Axiom neg_dist_r : forall A B, A * -B = - (A * B).
+Axiom neg_inv : forall A, - - A == A.
+Axiom neg_dist_l : forall A B, -A * B == - (A * B).
+Axiom neg_dist_r : forall A B, A * -B == - (A * B).
 
-Axiom i_sqr : forall A, i (i A) = -A.
-Axiom i_dist_l : forall A B, i A * B = i (A * B).
-Axiom i_dist_r : forall A B, A * i B = i (A * B).
+Axiom i_sqr : forall A, i (i A) == -A.
+Axiom i_dist_l : forall A B, i A * B == i (A * B).
+Axiom i_dist_r : forall A B, A * i B == i (A * B).
 
-Axiom i_neg_comm : forall A, i (-A) = -i A.
+Axiom i_neg_comm : forall A, i (-A) == -i A.
 
 Hint Rewrite mul_I_l mul_I_r Xsqr Zsqr ZmulX neg_inv neg_dist_l neg_dist_r i_sqr i_dist_l i_dist_r i_neg_comm : mul_db.
 
 (** ** Tensor Laws *)
 
-Axiom tensor_assoc : forall A B C, A ⊗ (B ⊗ C) = (A ⊗ B) ⊗ C.  
+Axiom neg_tensor_dist : forall A t1 t2,
+    tensor (t1 ++ [-A] ++ t2) == - tensor (t1 ++ [A] ++ t2).
+Axiom i_tensor_dist : forall A t1 t2,
+    tensor (t1 ++ [i A] ++ t2) == i (tensor (t1 ++ [A] ++ t2)).
 
-Axiom neg_tensor_dist_l : forall A B, -A ⊗ B = - (A ⊗ B).
-Axiom neg_tensor_dist_r : forall A B, A ⊗ -B = - (A ⊗ B).
-Axiom i_tensor_dist_l : forall A B, i A ⊗ B = i (A ⊗ B).
-Axiom i_tensor_dist_r : forall A B, A ⊗ i B = i (A ⊗ B).
+Fixpoint map2 {A B C} (f : A -> B -> C) (l1 : list A) (l2 : list B) : list C :=
+  match l1 with
+  | [] => []
+  | x :: xs => match l2 with
+             | [] => []
+             | y :: ys => f x y :: map2 f xs ys
+             end
+  end.
+
+Axiom map_mul_tensor : forall l1 l2, tensor l1 * tensor l2 == tensor (map2 mul l1 l2).
+
+(*
+Fixpoint normalize_mul (G : GType) : GType :=
+  match G with
+  | A * I => normalize_mul A
+  | I * B => normalize_mul B
+  | X * X => I 
+  | Z * Z => I 
+  | -A * -B => normalize_mul A 
+ *)
+
+(* Assumes every element of l is normalized *)
+(*
+Fixpoint normalize_list (l : list GType) : bool * bool * list GType :=
+  match l with
+  | nil => (false, false, l)
+  | A :: As => match A with (* could normalize_mul A here *)
+             | - i A' => let (opp, im, As') := normalize_list As in
+                        if im then (opp, false, A :: As') else (negb opp, true, A :: As')
+             | - A'   => let (opp, im, As') := normalize_list As in
+                        (negb opp, im, As')
+             | i A'   => let (opp, im, As') := normalize_list As in
+                        if im then (negb opp, false, A :: As') else (opp, true, A :: As')
+             | A'     => let (opp, im, As') := normalize_list As in
+                        (opp, im, A :: As')
+
+               
+             end
+  end.
+                          Fixpoint normalize_tensor : 
+*)
 
 (** ** Multiplication & Tensor Laws *)
 
-(* Appropriate restriction is that size A = size C and size B = size D,
-   but axiomatization doesn't allow for that calculation. *)
-(* This should be generalizable to the other, assuming we're multiplying
-   valid types. *)
+
+
 Axiom mul_tensor_dist : forall A B C D,
-    Singleton A ->
-    Singleton C ->
-    (A ⊗ B) * (C ⊗ D) = (A * C) ⊗ (B * D).
+  length A = length C ->
+  length B = length D ->    
+  tensor (A ++ B) * tensor (C ++ D) = (A * C) ⊗ (B * D).
 
 Lemma decompose_tensor : forall A B,
     Singleton A ->
