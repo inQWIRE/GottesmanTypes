@@ -1,4 +1,5 @@
 Require Export Types.
+Require Import Setoid.
 
 (* Programs *)
 
@@ -39,7 +40,7 @@ Axiom TypesI : forall p, p :: I → I.
 Axiom TypesI2 : forall p, p :: I ⊗ I → I ⊗ I.
 Hint Resolve TypesI TypesI2 : base_types_db.
 
-(** Structural rules *)
+(** ** Structural rules *)
 
 (* Subtyping rules *)
 Axiom cap_elim_l : forall g A B, g :: A ∩ B -> g :: A.
@@ -97,9 +98,8 @@ Proof.
     + eapply cap_elim_r. apply H.
 Qed.
 
-(** Typing Rules for Tensors *)
-
-Notation s := Datatypes.S.
+(** ** Typing Rules for Tensors *)
+(* TODO: Replace with sensible lookup-based rules *)
 
 Axiom tensor_base : forall g E A A',
     Singleton A ->
@@ -109,7 +109,7 @@ Axiom tensor_base : forall g E A A',
 Axiom tensor_inc : forall g n E A A',
     Singleton E ->
     g n :: (A → A') ->
-    g (s n) ::  E ⊗ A → E ⊗ A'.
+    g (S n) ::  E ⊗ A → E ⊗ A'.
 
 Axiom tensor_base2 : forall g E A A' B B',
     Singleton A ->
@@ -126,19 +126,19 @@ Axiom tensor_base2_inv : forall g E A A' B B',
 Axiom tensor_inc2 : forall (g : nat -> nat -> prog) m n E A A' B B',
     Singleton E ->
     g m n :: (A ⊗ B → A' ⊗ B') ->
-    g (s m) (s n) ::  E ⊗ A ⊗ B → E ⊗ A' ⊗ B'.
+    g (S m) (S n) ::  E ⊗ A ⊗ B → E ⊗ A' ⊗ B'.
 
 Axiom tensor_inc_l : forall (g : nat -> nat -> prog) m E A A' B B',
     Singleton A ->
     Singleton E ->
     g m 0 :: (A ⊗ B → A' ⊗ B') ->
-    g (s m) 0 ::  A ⊗ E ⊗ B → A' ⊗ E ⊗ B'.
+    g (S m) 0 ::  A ⊗ E ⊗ B → A' ⊗ E ⊗ B'.
 
 Axiom tensor_inc_r : forall (g : nat -> nat -> prog) n E A A' B B',
     Singleton A ->
     Singleton E ->
     g 0 n :: (A ⊗ B → A' ⊗ B') ->
-    g 0 (s n) ::  A ⊗ E ⊗ B → A' ⊗ E ⊗ B'.
+    g 0 (S n) ::  A ⊗ E ⊗ B → A' ⊗ E ⊗ B'.
 
 (* For flipping CNOTs. Could have CNOT specific rule. *)
 Axiom tensor2_comm : forall (g : nat -> nat -> prog) A A' B B',
@@ -150,12 +150,12 @@ Axiom tensor2_comm : forall (g : nat -> nat -> prog) A A' B B',
                       
                  
 
-(** Arrow rules *)
+(** ** Arrow rules *)
 
 (* Does this need restrictions? 
    If we had g :: X → iX then we could get 
    g :: I → -I which makes negation meaningless 
-   (and leads to a contradiction if I ∩ -I = ⊥.    
+   (and leads to a contradiction if I ∩ -I = ⊥).    
 *)
 
 Axiom arrow_mul : forall p A A' B B',
@@ -178,12 +178,22 @@ Hint Resolve HTypes STypes TTypes CNOTTypes : typing_db.
 Hint Resolve cap_intro cap_elim_l cap_elim_r : typing_db.
 Hint Resolve SeqTypes : typing_db.
 
-Lemma eq_arrow_r : forall g A B B',
-    g :: A → B ->
-    B = B' ->
-    g :: A → B'.
-Proof. intros; subst; easy. Qed.
+Axiom Geq_types : forall g A A', A == A' -> g :: A -> g :: A'.
 
+Add Parametric Morphism : has_type with signature eq ==> Geq ==> iff as GT_mor.
+Proof. intros. split; apply Geq_types; rewrite H; easy. Qed.
+
+Lemma Geq_arrow_l : forall g A A' B,
+    g :: A → B ->
+    A == A' ->
+    g :: A' → B.
+Proof. intros. rewrite <- H0; easy. Qed.
+
+Lemma Geq_arrow_r : forall g A B B',
+    g :: A → B ->
+    B == B' ->
+    g :: A → B'.
+Proof. intros. rewrite <- H0. easy. Qed.
 
 (* Tactics *)
 
@@ -204,13 +214,18 @@ Ltac is_prog2 A :=
   | CNOT => idtac
   end.
 
+Ltac print_goal :=
+  match goal with
+  |- ?A => idtac A
+  end.
+
 (* Reduces to sequence of H, S and CNOT *)
 Ltac type_check_base :=
   repeat apply cap_intro;
   repeat eapply SeqTypes; (* will automatically unfold compound progs *)
   repeat match goal with
-         | |- Singleton _       => auto 50 with sing_db
-         | |- ?g :: ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
+         | |- Singleton ?S      => tryif is_evar S then fail else auto 50 with sing_db
+         | |- ?g :: ?A → ?B      => tryif is_evar B then fail else eapply Geq_arrow_r
          | |- ?g :: - ?A → ?B    => apply arrow_neg
          | |- ?g :: i ?A → ?B    => apply arrow_i
          | |- context[?A ⊗ ?B]  => progress (autorewrite with tensor_db)
@@ -226,15 +241,15 @@ Ltac type_check_base :=
          | |- ?g (S _) :: ?T     => is_prog1 g; apply tensor_inc
          | |- ?g 0 :: ?T         => is_prog1 g; apply tensor_base
          | |- ?g :: ?A ⊗ ?B → _  => tryif (is_I A + is_I B) then fail else
-             rewrite (decompose_tensor A B) by (auto 50 with sing_db)
+             (* should be able to rewrite directly *)
+             eapply Geq_arrow_l; [|rewrite decompose_tensor; reflexivity]
          | |- ?g :: ?A → ?B      => tryif is_evar A then fail else
              solve [eauto with base_types_db]
-         | |- ?B = ?B'          => tryif has_evar B then fail else
+         | |- ?B == ?B'          => tryif has_evar B then fail else
             (repeat rewrite mul_tensor_dist);
             (repeat normalize_mul);
             (repeat rewrite <- i_tensor_dist_l);
             (repeat rewrite <- neg_tensor_dist_l);
             autorewrite with mul_db;
             try reflexivity
-         end.
-
+         end.  

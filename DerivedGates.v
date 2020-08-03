@@ -27,6 +27,6 @@ Lemma CZTypes : CZ 0 1 :: (X ⊗ I → X ⊗ Z) ∩ (I ⊗ X → Z ⊗ X) ∩
 Proof. type_check_base. Qed.
 
 Lemma SWAPTypes : (SWAP 0 1) :: (X ⊗ I → I ⊗ X) ∩ (I ⊗ X → X ⊗ I) ∩
-                               (Z ⊗ I → I ⊗ Z) ∩ (I ⊗ Z → Z ⊗ I).
-Proof. type_check_base. Qed.  
+                             (Z ⊗ I → I ⊗ Z) ∩ (I ⊗ Z → Z ⊗ I).
+Proof. type_check_base. Qed.
 
