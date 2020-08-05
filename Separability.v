@@ -1,6 +1,8 @@
 Require Export Programs.
 Require Export DerivedGates.
 Require Import Setoid.
+Require Import Arith.
+Require Import Bool.
 
 (* Non-I Singleton's *)
 Inductive Pauli : GType -> Prop :=
@@ -129,9 +131,6 @@ Compute (pad 2 3 I X).
 Definition padI l r A := pad l r I A.
 Definition padB l r A := pad l r □ A.
 
-Require Import Arith.
-Require Import Bool.
-
 (* Update in a tensor *)
 Fixpoint tupdate (n : nat) (T A : GType) :=    
   match T with
@@ -153,14 +152,29 @@ Fixpoint tget (n : nat) (T : GType) : GType :=
 Compute tget 2 (X ⊗ Z ⊗ X*Z ⊗ -Z ⊗ Y).
 Compute tupdate 2 (X ⊗ Z ⊗ X*Z ⊗ -Z ⊗ Y) (i Y).
 
-(* Need more generalizable versions of both of these *)
-Axiom singleton_sep : forall l r A,
+(* TODO: We need to ensure that A isn't embedded in (B ⊗ (A ⊗ I)), 
+   otherwise this isn't valid.
+   SOL1: Go back to tensor lists (note constructor is on outside of list) 
+   SOL2: Need a predicate on the whole type (e.g. g :: T -> T' and 
+   T = padI l r A, modulo caps. 
+   SOL3: Remove ⊗ as a morphism for == (Need something stronger for * then) or weaker
+   equality for ⊗/ 
+*)
+(* Also, need more generalizable versions of both of these *)
+Axiom sing_sep : forall l r A,
   Pauli A ->
   padI l r A == padB l r A.
 
-Axiom singleton_sep_propagate : forall l r A B,
+Axiom sing_sep_dist_l : forall l r A B,
   Pauli A -> 
   padB l r A ∩ B == padB l r A ∩ tupdate l B □.
+
+Lemma sing_sep_dist_r : forall l r A B,
+  Pauli A -> 
+  B ∩ padB l r A == tupdate l B □ ∩ padB l r A.
+Proof.
+  intros. rewrite !(cap_comm _ (padB l r A)), sing_sep_dist_l; easy.
+Qed.
 
 Fixpoint sep_of_list_aux (l r : nat) (Gs : list GType) : GType :=
   match Gs with
@@ -172,90 +186,62 @@ Fixpoint sep_of_list_aux (l r : nat) (Gs : list GType) : GType :=
 Definition sep_of_list (Gs : list GType) : GType :=
   sep_of_list_aux 0 (length Gs - 1) Gs.
 
-Import ListNotations.
-
 Compute sep_of_list (X :: Y :: Z :: -X :: []).
+Compute sep_of_list (X :: Y :: Z :: []).
 
-Notation "x × y × .. × z" := (sep_of_list (cons x (cons y .. (cons z nil) ..))) (at level 90).
+Notation "x × y × .. × z" := (sep_of_list (cons x (cons y .. (cons z nil) ..))) (at level 55, y at next level).
 
-Compute (X × Y × Z).
+Compute (X × Y).
+Compute (X × Y × Z). 
+Compute (Y × X × Y × Z). 
 
-Axiom times_assoc : forall A B C, A × (B × C) = (A × B) × C.
-
-Axiom all_I_sep_l : forall A IS,
-  Pauli A ->
-  all_I IS ->
-  A ⊗ IS = A × IS.
-
-Axiom all_I_sep_r : forall A IS,
-  Pauli A ->
-  all_I IS ->
-  IS ⊗ A = IS × A.
-
-Axiom sep_cap_I_l : forall A B C,
-  Pauli A ->
-  A × B ∩ I ⊗ C = A × (B ∩ C).
-
-Axiom sep_cap_I_r : forall A B C,
-  Pauli B ->
-  A × B ∩ C ⊗ I = (A ∩ C) × B.
-
-Axiom sep_cap_same_l : forall A B C,
-  Pauli A ->
-  A × B ∩ A ⊗ C = A × (B ∩ C).
-
-Axiom sep_cap_same_r : forall A B C,
-  Pauli B ->
-  A × B ∩ C ⊗ B = (A ∩ C) × B.
-
-
-(* Not valid. Hence: I ⊗ I <> I × I. *)
-Lemma invalid_expansion : X ⊗ I ⊗ I = X × I × I.
-Proof.
-  rewrite all_I_sep_l; auto with sep_db sing_db.
-  rewrite all_I_sep_r; auto with sep_db sing_db.
-Abort.
-
-Lemma sep_expansion2 : forall A B,
+Lemma sing_sep_expansion2 : forall A B,
   Pauli A ->
   Pauli B ->
-  A × B = A ⊗ I ∩ I ⊗ B.
+  A × B == A ⊗ I ∩ I ⊗ B.
 Proof.
   intros.
-  rewrite all_I_sep_l; auto with sep_db.
-  rewrite sep_cap_I_l; auto.
-  rewrite cap_I_l; auto with sep_db.
+  compute.
+  rewrite <- (sing_sep 0 1 A); trivial.
+  rewrite <- (sing_sep 1 0 B); trivial.
+  reflexivity.
 Qed.
     
-Lemma sep_expansion3 : forall A B C,
+Lemma sing_sep_expansion3 : forall A B C,
   Pauli A ->
   Pauli B ->
   Pauli C ->
-  A × B × C = A ⊗ I ⊗ I ∩ I ⊗ B ⊗ I ∩ I ⊗ I ⊗ C.
+  A × B × C == A ⊗ I ⊗ I ∩ I ⊗ B ⊗ I ∩ I ⊗ I ⊗ C.
 Proof.
   intros.
-  rewrite (all_I_sep_l A); auto with sep_db.
-  rewrite sep_cap_I_l; auto.
-  rewrite (cap_I_l_gen (B ⊗ I)); auto with sep_db.
-  rewrite sep_cap_I_l; auto.
-  rewrite <- sep_expansion2; auto.
-Qed.  
+  compute.
+  rewrite <- (sing_sep 0 2 A); trivial.
+  rewrite <- (sing_sep 1 1 B); trivial.
+  rewrite <- (sing_sep 2 0 C); trivial.
+  rewrite cap_assoc.
+  reflexivity.
+Qed.
 
-Lemma sep_expansion4 : forall A B C D,
+(* Way to do recursively? *)
+Lemma sing_sep_expansion4 : forall A B C D,
   Pauli A ->
   Pauli B ->
   Pauli C ->
   Pauli D ->
-  A × B × C × D = A ⊗ I ⊗ I ⊗ I ∩ I ⊗ B ⊗ I ⊗ I ∩ I ⊗ I ⊗ C ⊗ I ∩ I ⊗ I ⊗ I ⊗ D.
+  A × B × C × D == A ⊗ I ⊗ I ⊗ I ∩ I ⊗ B ⊗ I ⊗ I ∩ I ⊗ I ⊗ C ⊗ I ∩ I ⊗ I ⊗ I ⊗ D.
 Proof.
   intros.
-  rewrite (all_I_sep_l A); auto with sep_db.
-  rewrite sep_cap_I_l; auto.
-  rewrite (cap_I_l_gen (B ⊗ I ⊗ I)); auto with sep_db.
-  rewrite sep_cap_I_l; auto.
-  rewrite sep_cap_I_l; auto.
-  rewrite <- sep_expansion3; auto.
-Qed.  
+  compute.
+  rewrite <- (sing_sep 0 3 A); trivial.
+  rewrite <- (sing_sep 1 2 B); trivial.
+  rewrite <- (sing_sep 2 1 C); trivial.
+  rewrite <- (sing_sep 3 0 D); trivial.
+  repeat rewrite cap_assoc.
+  reflexivity.
+Qed.
+
+Close Scope list_scope.
+
 
 (** * Examples *)
 
@@ -263,82 +249,85 @@ Qed.
 
 Lemma CNOT_ZX : CNOT 0 1 :: Z × X → Z × X.
 Proof.
-  rewrite sep_expansion2; auto with sep_db.
+  rewrite sing_sep_expansion2; auto with sep_db.
   apply cap_arrow_distributes.
   type_check_base.
 Qed.
 
 Lemma CNOT_ZZ : CNOT 0 1 :: Z × Z → Z × Z.
 Proof.
-  rewrite sep_expansion2 at 1; auto with sep_db.
-  eapply eq_arrow_r.
+  rewrite sing_sep_expansion2 at 1; auto with sep_db.
+  eapply Geq_arrow_r.
   apply cap_arrow_distributes.  
   type_check_base.
-  rewrite all_I_sep_l; auto with sep_db.
-  rewrite sep_cap_same_l; auto with sep_db.
-  rewrite cap_I_l; auto with sing_db.
+  rewrite (sing_sep 0 1 Z); auto with sep_db.
+  rewrite sing_sep_dist_l; auto with sep_db; simpl.
+  reflexivity.
 Qed.
 
 Lemma CNOT_XX : CNOT 0 1 :: X × X → X × X.
 Proof.
-  rewrite sep_expansion2 at 1; auto with sep_db.
-  eapply eq_arrow_r.
+  rewrite sing_sep_expansion2 at 1; auto with sep_db.
+  eapply Geq_arrow_r.
   apply cap_arrow_distributes.  
   type_check_base.
-  rewrite (all_I_sep_r X I); auto with sep_db.
-  rewrite cap_comm.
-  rewrite sep_cap_same_r; auto with sep_db.
-  rewrite cap_I_l; auto with sing_db.
+  rewrite (sing_sep 1 0 X); auto with sep_db.
+  rewrite sing_sep_dist_r; auto with sep_db; simpl.
+  reflexivity.
 Qed.
 
 (** ** SWAP *)
 
 Lemma SWAP_XX : SWAP 0 1 :: X × X → X × X.
 Proof.
-  rewrite sep_expansion2 at 1; auto with sep_db.
-  eapply eq_arrow_r.
+  rewrite sing_sep_expansion2 at 1; auto with sep_db.
+  eapply Geq_arrow_r.
   apply cap_arrow_distributes.  
   type_check_base.
   normalize_mul.
-  rewrite (all_I_sep_r X I); auto with sep_db.
-  rewrite sep_cap_I_r; auto with sep_db.
-  rewrite cap_I_l; auto with sing_db.
+  rewrite (sing_sep 0 1 X); auto with sep_db.
+  rewrite (sing_sep 1 0 X); auto with sep_db.
+  rewrite cap_comm.
+  reflexivity.
 Qed.
 
 Lemma SWAP_XZ : SWAP 0 1 :: X × Z → Z × X.
 Proof.
-  rewrite sep_expansion2 at 1; auto with sep_db.
-  eapply eq_arrow_r.
+  rewrite sing_sep_expansion2 at 1; auto with sep_db.
+  eapply Geq_arrow_r.
   apply cap_arrow_distributes.  
   type_check_base.
   normalize_mul.
-  rewrite (all_I_sep_r X I); auto with sep_db.
-  rewrite sep_cap_I_r; auto with sep_db.
-  rewrite cap_I_l; auto with sing_db.
+  rewrite (sing_sep 0 1 Z); auto with sep_db.
+  rewrite (sing_sep 1 0 X); auto with sep_db.
+  rewrite cap_comm.
+  reflexivity.
 Qed.
 
 Lemma SWAP_ZX : SWAP 0 1 :: Z × X → X × Z.
 Proof.
-  rewrite sep_expansion2 at 1; auto with sep_db.
-  eapply eq_arrow_r.
+  rewrite sing_sep_expansion2 at 1; auto with sep_db.
+  eapply Geq_arrow_r.
   apply cap_arrow_distributes.  
   type_check_base.
   normalize_mul.
-  rewrite (all_I_sep_r Z I); auto with sep_db.
-  rewrite sep_cap_I_r; auto with sep_db.
-  rewrite cap_I_l; auto with sing_db.
+  rewrite (sing_sep 0 1 X); auto with sep_db.
+  rewrite (sing_sep 1 0 Z); auto with sep_db.
+  rewrite cap_comm.
+  reflexivity.
 Qed.
 
 Lemma SWAP_ZZ : SWAP 0 1 :: Z × Z → Z × Z.
 Proof.
-  rewrite sep_expansion2 at 1; auto with sep_db.
-  eapply eq_arrow_r.
+  rewrite sing_sep_expansion2 at 1; auto with sep_db.
+  eapply Geq_arrow_r.
   apply cap_arrow_distributes.  
   type_check_base.
   normalize_mul.
-  rewrite (all_I_sep_r Z I); auto with sep_db.
-  rewrite sep_cap_I_r; auto with sep_db.
-  rewrite cap_I_l; auto with sing_db.
+  rewrite (sing_sep 0 1 Z); auto with sep_db.
+  rewrite (sing_sep 1 0 Z); auto with sep_db.
+  rewrite cap_comm.
+  reflexivity.
 Qed.
       
 

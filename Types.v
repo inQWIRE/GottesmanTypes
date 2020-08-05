@@ -11,13 +11,13 @@ Inductive GType :=
 | tensor : GType -> GType ->  GType
 | cap :    GType -> GType -> GType
 | arrow :  GType -> GType -> GType
-| blank :  GType
-| times :  GType -> GType -> GType.
+| blank :  GType (* for separability *).
+(* | times :  GType -> GType -> GType. *)
 
 Notation "'□'" := blank.
 Notation "- T" := (neg T).
 Infix "*" := mul (at level 40, left associativity).
-Infix "×" := times (at level 49, right associativity).
+(* Infix "×" := times (at level 49, right associativity). *)
 Infix "⊗" := tensor (at level 51, right associativity).
 Infix "→" := arrow (at level 60, no associativity).
 Infix "∩" := cap (at level 60, no associativity).
@@ -59,7 +59,6 @@ Axiom mul_compat    : forall x y, x == y -> forall x0 y0, x0 == y0 -> x * x0 == 
 Axiom tensor_compat : forall x y, x == y -> forall x0 y0, x0 == y0 -> x ⊗ x0 == y ⊗ y0.
 Axiom cap_compat    : forall x y, x == y -> forall x0 y0, x0 == y0 -> x ∩ x0 == y ∩ y0.
 Axiom arrow_compat  : forall x y, x == y -> forall x0 y0, x0 == y0 -> x → x0 == y → y0.
-Axiom times_compat  : forall x y, x == y -> forall x0 y0, x0 == y0 -> x × x0 == y × y0.
 
 Add Parametric Morphism : neg with signature Geq ==> Geq as neg_mor.
 Proof. apply neg_compat. Qed.
@@ -73,8 +72,6 @@ Add Parametric Morphism : cap with signature Geq ==> Geq ==> Geq as cap_mor.
 Proof. apply cap_compat. Qed.
 Add Parametric Morphism : arrow with signature Geq ==> Geq ==> Geq as arrow_mor.
 Proof. apply arrow_compat. Qed.
-Add Parametric Morphism : times with signature Geq ==> Geq ==> Geq as times_mor.
-Proof. apply times_compat. Qed.
 
 (** ** Multiplication laws *)
 
@@ -117,7 +114,6 @@ Fixpoint size G :=
   | G1 * G2 => size G1 (* should equal size G2 *)
   | G1 ∩ G2 => size G1 (* should equal size G2 *)   
   | G1 → G2 => 0       (* not defined over arrows *)
-  | G1 × G2 => 0       (* not defined over times *)
   | _       => 1
   end.
 
