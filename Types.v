@@ -25,11 +25,12 @@ Infix "∩" := cap (at level 60, no associativity).
 
 Notation "x ⊗ y ⊗ .. ⊗ z" := (tensor (cons x (cons y .. (cons z nil) ..))) (at level 51, y at next level).
 
-
 Notation Y := (i (X * Z)).
 Notation "⊥" := (X ∩ Y).
 
-(* Could just use size = 1 ? *)
+(* Decidable but not worth proving *)
+Axiom eq_dec_GType : forall (A B : GType), A = B \/ A <> B.
+
 Inductive Singleton : GType -> Prop :=
 | SI : Singleton I
 | SX : Singleton X
@@ -43,6 +44,9 @@ Hint Resolve SI SX SZ S_neg S_i S_mul : sing_db.
 Lemma SY : Singleton Y.
 Proof. auto with sing_db. Qed.
 
+(** ** Strict Equality between GTypes *)
+
+  
 (** ** Equality between GTypes *)
 
 Parameter Geq : GType -> GType -> Prop.
@@ -332,17 +336,39 @@ Fixpoint normalize_mul_flags (A : GType) : bool * GType :=
               | I, X => (opp, X) 
               | I, Z => (opp, Z) 
               | I, I => (opp, I) 
+              | I, X * Z => (opp, X * Z) 
               | X, I => (opp, X)
               | X, X => (opp, I) 
               | X, Z => (opp, X * Z) 
+              | X, X * Z => (opp, Z) 
               | Z, I => (opp, Z) 
               | Z, X => (negb opp, X * Z)
               | Z, Z => (opp, I) 
+              | Z, X * Z => (negb opp, X) 
+              | X * Z, I => (opp, X * Z) 
+              | X * Z, X => (negb opp, Z)
+              | X * Z, Z => (opp, X) 
+              | X * Z, X * Z => (negb opp, I) 
               | _,  _  => (false, A)
               end
   | A'      => (false, A')
   end.
 
+(*
+Ltac naive_mul :=
+  repeat match goal with
+  | _ => progress autorewrite with mul_db
+  | _ => rewrite mul_assoc; progress autorewrite with mul_db
+  | _ => rewrite <- mul_assoc; progress autorewrite with mul_db
+         end.
+ *)
+
+Ltac naive_mul :=
+  repeat (repeat rewrite mul_assoc;
+  repeat (
+      try rewrite <- (mul_assoc X Z _);
+      autorewrite with mul_db;
+      try rewrite mul_assoc )).
 
 Lemma normalize_mul_flags_eq : forall A,
   let (opp, A') := normalize_mul_flags A in (* use eq/Geq instead? *)
@@ -355,9 +381,12 @@ Proof.
   simpl in *.
   destruct A1', A2'; try easy;
   inversion E1; inversion E2; subst;
-  simpl; autorewrite with mul_db;
+  try destruct A1'1; try easy;
+  try destruct A1'2; try easy;
+  try destruct A2'1; try easy;
+  try destruct A2'2; try easy;
   rewrite <- IHA1, <- IHA2;
-  destruct opp1, opp2; simpl; autorewrite with mul_db; easy.
+    destruct opp1, opp2; simpl; naive_mul; try easy.  
 Qed.
 
 Lemma normalize_mul_flags_eq' : forall A A' opp im,
@@ -371,11 +400,24 @@ Proof.
   simpl in *.
   specialize (IHA1 _ _ false eq_refl).
   specialize (IHA2 _ _ false eq_refl).
+  clear E1 E2 H1.
+  simpl in *.
+
+  (* TODO: Add morphisms for if. *)
+  assert (dec: (false, A1 * A2) = (opp,A') \/ ~ ((false, A1 * A2) = (opp, A'))). 
+  destruct opp; destruct (eq_dec_GType (A1 * A2) A'); subst; eauto;
+    right; intros F; inversion F; contradiction.
+  destruct dec.
+  inversion H0; subst; easy.
   destruct A1', A2';
+  try destruct A1'1; try easy;
+  try destruct A1'2; try easy;
+  try destruct A2'1; try easy;
+  try destruct A2'2; try easy;
   inversion H; subst;
   destruct opp1, opp2, im; simpl in *;
   rewrite <- IHA1, <- IHA2;
-  autorewrite with mul_db; try easy.
+  naive_mul; try easy.
 Qed.
 
 Definition normalize_mul (A : GType) : GType :=
@@ -400,23 +442,18 @@ Proof.
   specialize (normalize_mul_flags_eq' A' A'' opp' im E2) as NM.
   destruct opp, opp', im; simpl in *; rewrite <- NM; autorewrite with mul_db; easy.
 Qed.  
-  
-(* Note: I haven't proven that this works or terminates.
-   An anticommutative monoidal solver would be ideal here. *)
-Ltac normalize_mul :=
-  repeat match goal with
-  | |- context[(?A ⊗ ?B) ⊗ ?C] => rewrite <- (tensor_assoc A B C)
-  end;
-  repeat (rewrite mul_tensor_dist by easy);
-  repeat rewrite mul_assoc;
-  repeat (
-      try rewrite <- (mul_assoc X Z _);
-      autorewrite with mul_db tensor_db;
-      try rewrite mul_assoc ).
 
-Lemma Ysqr : Y * Y == I. Proof. normalize_mul. reflexivity. Qed.
-Lemma XmulZ : X * Z == - Z * X. Proof. normalize_mul. reflexivity. Qed.
-Lemma XmulY : X * Y == i Z. Proof. normalize_mul. reflexivity. Qed.
-Lemma YmulX : Y * X == -i Z. Proof. normalize_mul. reflexivity. Qed.
-Lemma ZmulY : Z * Y == -i X. Proof. normalize_mul. reflexivity. Qed.
-Lemma YmulZ : Y * Z == i X. Proof. normalize_mul. reflexivity. Qed.
+Ltac show_mul_eq :=
+  match goal with
+  | [ |- ?A == ?B ] => rewrite <- (normalize_mul_eq A); 
+                     rewrite <- (normalize_mul_eq B);
+                     simpl;
+                     reflexivity
+  end.
+
+Lemma Ysqr : Y * Y == I. Proof. show_mul_eq. Qed.
+Lemma XmulZ : X * Z == - Z * X. Proof. show_mul_eq. Qed.
+Lemma XmulY : X * Y == i Z. Proof. show_mul_eq. Qed.
+Lemma YmulX : Y * X == -i Z. Proof. show_mul_eq. Qed.
+Lemma ZmulY : Z * Y == -i X. Proof. show_mul_eq. Qed.
+Lemma YmulZ : Y * Z == i X. Proof. show_mul_eq. Qed.
