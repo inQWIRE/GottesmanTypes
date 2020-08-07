@@ -56,6 +56,8 @@ Axiom Geq_refl  : forall A, A == A.
 Axiom Geq_sym   : forall A B, A == B -> B == A.
 Axiom Geq_trans : forall A B C, A == B -> B == C -> A == C.
 
+(** TODO: Not sure these are useful notions of list equality. Maybe replace *)
+
 Definition Geq_opt oA oB :=
   match oA, oB with
   | Some A, Some B => A == B
@@ -146,6 +148,7 @@ Axiom i_neg_comm : forall A, i (-A) == -i A.
 Hint Rewrite mul_I_l mul_I_r Xsqr Zsqr ZmulX neg_inv neg_dist_l neg_dist_r i_sqr i_dist_l i_dist_r i_neg_comm : mul_db.
 
 (** ** Tensor Laws *)
+(** TODO: Make minimal. *)
 
 Fixpoint map2 {A B C} (f : A -> B -> C) (l1 : list A) (l2 : list B) : list C :=
   match l1, l2 with
@@ -159,7 +162,40 @@ Fixpoint update l k (A : GType) :=
   | S k', A' :: As => A' :: (update As k' A)
   | _,    _       => nil
   end.
+
+Axiom dist_i_tensor : forall A l,
+    tensor (i A :: l) = i (tensor (A :: l)).
+
+Axiom dist_neg_tensor : forall A l,
+    tensor (- A :: l) = - (tensor (A :: l)).
+
+Axiom cons_tensor : forall A A' l l',
+  A == A' ->
+  tensor l == tensor l' ->
+  tensor (A :: l) == tensor (A' :: l').
+
+Axiom cons_i_tensor : forall A A' l l',
+  A == i A' ->
+  i (tensor l) == tensor l' ->
+  tensor (A :: l) == tensor (A' :: l').
+
+Axiom cons_neg_tensor : forall A A' l l',
+  A == - A' ->
+  - (tensor l) == tensor l' ->
+  tensor (A :: l) == tensor (A' :: l').
+
+Lemma cons_neg_i_tensor : forall A A' l l',
+  A == - i A' ->
+  - i (tensor l) == tensor l' ->
+  tensor (A :: l) == tensor (A' :: l').
+Proof.
+  symmetry. apply cons_i_tensor.
+  rewrite H, i_neg_comm, i_sqr, neg_inv. easy.
+  rewrite <- H0, i_neg_comm, i_sqr, neg_inv. easy.
+Qed.
   
+(* Derivable from above? Necessary? *)
+
 Axiom neg_tensor_dist : forall l k A,
   nth k l ⊥ == - A ->
   tensor l == - tensor (update l k A).
@@ -389,6 +425,7 @@ Proof.
     destruct opp1, opp2; simpl; naive_mul; try easy.  
 Qed.
 
+(*
 Lemma normalize_mul_flags_eq' : forall A A' opp im,
   normalize_mul_flags A = (opp, A') ->
   flags_to_coefficients (opp, im, A') == if im then i A else A.
@@ -419,6 +456,7 @@ Proof.
   rewrite <- IHA1, <- IHA2;
   naive_mul; try easy.
 Qed.
+ *)
 
 Definition normalize_mul (A : GType) : GType :=
   match (remove_coefficients_flags A) with
@@ -439,7 +477,8 @@ Proof.
   simpl in RC.
   rewrite <- RC in *.
   clear E1 RC.
-  specialize (normalize_mul_flags_eq' A' A'' opp' im E2) as NM.
+  specialize (normalize_mul_flags_eq A') as NM.
+  rewrite E2 in NM.
   destruct opp, opp', im; simpl in *; rewrite <- NM; autorewrite with mul_db; easy.
 Qed.  
 
@@ -451,9 +490,70 @@ Ltac show_mul_eq :=
                      reflexivity
   end.
 
-Lemma Ysqr : Y * Y == I. Proof. show_mul_eq. Qed.
+Ltac show_coeff_eq :=
+  match goal with
+  | [ |- ?A == ?B ] => rewrite <- (remove_coefficients_flags_eq A); 
+                     rewrite <- (remove_coefficients_flags_eq B);
+                     simpl;
+                     reflexivity
+  end.
+
+Lemma Ysqr : Y * Y == I.        Proof. show_mul_eq. Qed.
 Lemma XmulZ : X * Z == - Z * X. Proof. show_mul_eq. Qed.
-Lemma XmulY : X * Y == i Z. Proof. show_mul_eq. Qed.
-Lemma YmulX : Y * X == -i Z. Proof. show_mul_eq. Qed.
-Lemma ZmulY : Z * Y == -i X. Proof. show_mul_eq. Qed.
-Lemma YmulZ : Y * Z == i X. Proof. show_mul_eq. Qed.
+Lemma XmulY : X * Y == i Z.     Proof. show_mul_eq. Qed.
+Lemma YmulX : Y * X == -i Z.    Proof. show_mul_eq. Qed.
+Lemma ZmulY : Z * Y == -i X.    Proof. show_mul_eq. Qed.
+Lemma YmulZ : Y * Z == i X.     Proof. show_mul_eq. Qed.
+
+Fixpoint normalize_list_flags (l : list GType) : bool * bool * list GType :=
+  match l with
+  | nil => (false, false, nil)
+  | A :: l' => match normalize_list_flags l' with
+               (opp, im, l'') => match remove_coefficients_flags A with
+                                  (opp', im', A') => match normalize_mul_flags A' with
+                                                      (opp'', A'') =>
+                                (opp ⊻ opp' ⊻ opp'' ⊻ (im && im'),im ⊻ im', (A'' :: l''))
+                                                    end
+                                end
+             end
+  end.
+
+Definition normalize_list (l : list GType) : GType :=
+  match normalize_list_flags l with
+    (opp, im, l') => flags_to_coefficients (opp, im, tensor l')
+  end.
+
+Lemma normalize_list_eq : forall l,
+    tensor l == normalize_list l.
+Proof.
+  unfold normalize_list.
+  induction l as [|A l]; try easy.
+  simpl.
+  destruct (remove_coefficients_flags A) as [[opp im] A'] eqn:E1.
+  destruct (normalize_mul_flags A') as [opp' A''] eqn:E2.
+  destruct (normalize_list_flags l) as [[opp'' im'] l'] eqn:E3.
+  specialize (remove_coefficients_flags_eq A) as RC.
+  rewrite E1 in RC.
+  simpl in RC.
+  rewrite <- RC in *.
+  clear E1 RC.
+  specialize (normalize_mul_flags_eq A') as NM.
+  rewrite E2 in NM.
+  simpl in IHl.
+  destruct opp, opp', opp'', im, im'; simpl in *; rewrite <- NM;
+  naive_mul;
+  repeat (try rewrite <- dist_i_tensor; try rewrite <- dist_neg_tensor);
+  match goal with
+  | |- tensor (?A :: _) == tensor (?A :: _) => apply cons_tensor
+  | |- tensor (i ?A :: _) == tensor (?A :: _) => apply cons_i_tensor
+  | |- tensor (?A :: _) == tensor (i ?A :: _) => symmetry; apply cons_i_tensor
+  | |- tensor (- ?A :: _) == tensor (?A :: _) => apply cons_neg_tensor
+  | |- tensor (?A :: _) == tensor (- ?A :: _) => symmetry; apply cons_neg_tensor
+  | |- tensor (- ?A :: _) == tensor (i ?A :: _) => apply cons_i_tensor
+  | |- tensor (i ?A :: _) == tensor (- ?A :: _) => symmetry; apply cons_i_tensor
+  | |- tensor (?A :: _) == tensor (- i ?A :: _) => apply cons_i_tensor
+  | |- tensor (- i ?A :: _) == tensor (?A :: _) => symmetry; apply cons_i_tensor
+  | |- tensor (- i ?A :: _) == tensor (- ?A :: _) => apply cons_i_tensor
+  | |- tensor (- ?A :: _) == tensor (- i ?A :: _) => symmetry; apply cons_i_tensor
+  end; naive_mul; try easy; rewrite IHl; naive_mul; easy.
+Qed.  
