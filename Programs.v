@@ -196,10 +196,16 @@ Ltac print_goal :=
   |- ?A => idtac A
   end.
 
+Ltac list_gt2 l :=
+  let H := fresh in 
+  assert (H : length l > 2) by (simpl; lia);
+  clear H.
+
 Ltac type_check_base :=
   repeat apply cap_intro;
   repeat eapply SeqTypes; (* will automatically unfold compound progs *)
-  repeat match goal with
+  repeat (match goal with
+         | |- context[?A * ?B]  => progress (rewrite <- (normalize_mul_eq (A * B)); simpl)
          | |- ?g :: ?A → ?B      => tryif is_evar A then fail else
              solve [eauto with base_types_db]
          | |- Singleton ?S      => tryif is_evar S then fail else auto 50 with sing_db
@@ -207,12 +213,17 @@ Ltac type_check_base :=
          | |- ?g :: - ?A → ?B    => apply arrow_neg
          | |- ?g :: i ?A → ?B    => apply arrow_i
          | |- U1 ?u _ :: tensor ?A → ?B => eapply tensor_types1; [|easy]
+         | |- U2 ?u (S _) _ :: tensor ?A → ?B =>
+           eapply tensor_types2; [lia| |easy|easy]
          | |- U2 ?u _ _ :: tensor ?A → ?B =>
-           progress (eapply tensor_types2; [lia| |easy|easy])
+           list_gt2 A; eapply tensor_types2; [lia| |easy|easy]
          | |- ?g :: ?A * ?B → _  => apply arrow_mul
          | |- ?g :: ?A ⊗ ?B → _  => tryif (is_I A + is_I B) then fail else
-             (* should be able to rewrite directly *)
-             eapply Geq_arrow_l; [|rewrite decompose_tensor; reflexivity]
+             (* should be able to rewrite directly
+             eapply Geq_arrow_l; [|rewrite decompose_tensor; reflexivity] *)
+             rewrite decompose_tensor
+         | |- ?B == ?B'               => rewrite mul_tensor by reflexivity
          | |- tensor ?B == tensor ?B' => tryif has_evar B then fail else show_tensor_eq
          | |- ?B == ?B'               => tryif has_evar B then fail else show_mul_eq
-         end.  
+         end; simpl).  
+
