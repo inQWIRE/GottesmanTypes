@@ -148,7 +148,9 @@ Axiom i_neg_comm : forall A, i (-A) == -i A.
 Hint Rewrite mul_I_l mul_I_r Xsqr Zsqr ZmulX neg_inv neg_dist_l neg_dist_r i_sqr i_dist_l i_dist_r i_neg_comm : mul_db.
 
 (** ** Tensor Laws *)
-(** TODO: Make minimal. *)
+(* TODO: Make minimal. *)
+(* TODO: Ensure that Is can't be replaced by □s in lists 
+   (e.g. add [Singleton A] to cons_tensor laws) *)
 
 Fixpoint map2 {A B C} (f : A -> B -> C) (l1 : list A) (l2 : list B) : list C :=
   match l1, l2 with
@@ -242,27 +244,30 @@ Proof.
   easy.
 Qed.
 
-(* Let's figure out if we need these before updating  
+(* Let's figure out if we need these before updating *)
 Lemma decompose_tensor_mult_l : forall A B,
-    size A = size B ->
+    Singleton A ->
+    Singleton B ->
     (A * B) ⊗ I == (A ⊗ I) * (B ⊗ I).
 Proof.
   intros.
-  rewrite mul_tensor_dist; auto.
+  rewrite mul_tensor; trivial.
+  simpl.
   rewrite mul_I_l.
   easy.
 Qed.
 
 Lemma decompose_tensor_mult_r : forall A B,
-    size A = size B ->
+    Singleton A ->
+    Singleton B ->
     I ⊗ (A * B) == (I ⊗ A) * (I ⊗ B).
 Proof.
   intros.
-  rewrite mul_tensor_dist; auto with sing_db.
+  rewrite mul_tensor; trivial.
+  simpl.
   rewrite mul_I_l.
   easy.
 Qed.
-*)  
 
 Hint Rewrite neg_tensor_dist neg_tensor_dist i_tensor_dist i_tensor_dist : tensor_db.
 
@@ -485,7 +490,7 @@ Qed.
 Ltac show_mul_eq :=
   match goal with
   | [ |- ?A == ?B ] => rewrite <- (normalize_mul_eq A); 
-                     rewrite <- (normalize_mul_eq B);
+                     try rewrite <- (normalize_mul_eq B);
                      simpl;
                      reflexivity
   end.
@@ -493,7 +498,7 @@ Ltac show_mul_eq :=
 Ltac show_coeff_eq :=
   match goal with
   | [ |- ?A == ?B ] => rewrite <- (remove_coefficients_flags_eq A); 
-                     rewrite <- (remove_coefficients_flags_eq B);
+                     try rewrite <- (remove_coefficients_flags_eq B);
                      simpl;
                      reflexivity
   end.
@@ -557,3 +562,11 @@ Proof.
   | |- tensor (- ?A :: _) == tensor (- i ?A :: _) => symmetry; apply cons_i_tensor
   end; naive_mul; try easy; rewrite IHl; naive_mul; easy.
 Qed.  
+
+Ltac show_tensor_eq :=
+  match goal with
+  | [ |- tensor ?A == tensor ?B ] => rewrite (normalize_list_eq A); 
+                                   try rewrite (normalize_list_eq B);
+                                   simpl;
+                                   reflexivity
+  end.

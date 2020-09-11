@@ -1,8 +1,14 @@
 Require Export Types.
-Require Import Setoid.
-
+Require Export Setoid.
+Require Export List.
+Require Export Psatz.
+        
 (* Programs *)
 
+Inductive Unitary1 := H' | S' | T'.
+Inductive Unitary2 := CNOT.
+
+(*
 (* Can also use sequence and parallel in place of nats, ala QBricks *)
 Inductive prog :=
 | H' (n : nat)
@@ -10,7 +16,15 @@ Inductive prog :=
 | T' (n : nat)
 | CNOT (n1 n2 : nat)
 | seq (p1 p2 : prog).
+*)
 
+Inductive prog :=
+| U1 (U : Unitary1) (n : nat)
+| U2 (U : Unitary2) (n1 n2 : nat)
+| seq (p1 p2 : prog).
+
+Coercion U1 : Unitary1 >-> Funclass.
+Coercion U2 : Unitary2 >-> Funclass.
 Infix ";" := seq (at level 51, right associativity).
 
 (** Basic Typing judgements *)
@@ -101,54 +115,17 @@ Qed.
 (** ** Typing Rules for Tensors *)
 (* TODO: Replace with sensible lookup-based rules *)
 
-Axiom tensor_base : forall g E A A',
-    Singleton A ->
-    g 0 :: (A → A') ->
-    g 0 ::  A ⊗ E → A' ⊗ E.
+Axiom tensor_types1 : forall (u : Unitary1) l k A A',
+  u 0 :: A → A' ->
+  nth_error l k = Some A ->
+  u k :: tensor l → tensor (update l k A').
 
-Axiom tensor_inc : forall g n E A A',
-    Singleton E ->
-    g n :: (A → A') ->
-    g (S n) ::  E ⊗ A → E ⊗ A'.
-
-Axiom tensor_base2 : forall g E A A' B B',
-    Singleton A ->
-    Singleton B ->
-    g 0 1 :: (A ⊗ B → A' ⊗ B') ->
-    g 0 1 :: (A ⊗ B ⊗ E → A' ⊗ B' ⊗ E).
-
-Axiom tensor_base2_inv : forall g E A A' B B',
-    Singleton A ->
-    Singleton B ->
-    g 0 1 :: (B ⊗ A → B' ⊗ A') ->
-    g 1 0 :: (A ⊗ B ⊗ E → A' ⊗ B' ⊗ E).
-
-Axiom tensor_inc2 : forall (g : nat -> nat -> prog) m n E A A' B B',
-    Singleton E ->
-    g m n :: (A ⊗ B → A' ⊗ B') ->
-    g (S m) (S n) ::  E ⊗ A ⊗ B → E ⊗ A' ⊗ B'.
-
-Axiom tensor_inc_l : forall (g : nat -> nat -> prog) m E A A' B B',
-    Singleton A ->
-    Singleton E ->
-    g m 0 :: (A ⊗ B → A' ⊗ B') ->
-    g (S m) 0 ::  A ⊗ E ⊗ B → A' ⊗ E ⊗ B'.
-
-Axiom tensor_inc_r : forall (g : nat -> nat -> prog) n E A A' B B',
-    Singleton A ->
-    Singleton E ->
-    g 0 n :: (A ⊗ B → A' ⊗ B') ->
-    g 0 (S n) ::  A ⊗ E ⊗ B → A' ⊗ E ⊗ B'.
-
-(* For flipping CNOTs. Could have CNOT specific rule. *)
-Axiom tensor2_comm : forall (g : nat -> nat -> prog) A A' B B',
-    Singleton A ->
-    Singleton B ->
-    g 0 1 :: A ⊗ B → A' ⊗ B' ->
-    g 1 0 :: B ⊗ A → B' ⊗ A'.
-
-                      
-                 
+Axiom tensor_types2 : forall (u : Unitary2) l j k A B A' B',
+  j <> k ->
+  u 0 1 :: A ⊗ B → A' ⊗ B' ->  
+  nth_error l j = Some A ->
+  nth_error l k = Some B ->
+  u j k :: tensor l → tensor (update (update l j A') k B').
 
 (** ** Arrow rules *)
 
@@ -219,37 +196,23 @@ Ltac print_goal :=
   |- ?A => idtac A
   end.
 
-(* Reduces to sequence of H, S and CNOT *)
 Ltac type_check_base :=
   repeat apply cap_intro;
   repeat eapply SeqTypes; (* will automatically unfold compound progs *)
   repeat match goal with
+         | |- ?g :: ?A → ?B      => tryif is_evar A then fail else
+             solve [eauto with base_types_db]
          | |- Singleton ?S      => tryif is_evar S then fail else auto 50 with sing_db
          | |- ?g :: ?A → ?B      => tryif is_evar B then fail else eapply Geq_arrow_r
          | |- ?g :: - ?A → ?B    => apply arrow_neg
          | |- ?g :: i ?A → ?B    => apply arrow_i
-         | |- context[?A ⊗ ?B]  => progress (autorewrite with tensor_db)
-         | |- ?g :: ?A * ?B → _ => apply arrow_mul
-         | |- ?g :: (?A * ?B) ⊗ I → _ => rewrite decompose_tensor_mult_l
-         | |- ?g :: I ⊗ (?A * ?B) → _ => rewrite decompose_tensor_mult_r
-         | |- ?g (S _) (S _) :: ?T => apply tensor_inc2
-         | |- ?g 0 (S (S _)) :: ?T => apply tensor_inc_r
-         | |- ?g (S (S _)) 0 :: ?T => apply tensor_inc_l
-         | |- ?g 1 0 :: ?T       => apply tensor_base2_inv
-         | |- ?g 0 1 :: ?T       => apply tensor_base2
-         | |- ?g 1 0 :: ?T       => apply tensor2_comm
-         | |- ?g (S _) :: ?T     => is_prog1 g; apply tensor_inc
-         | |- ?g 0 :: ?T         => is_prog1 g; apply tensor_base
+         | |- U1 ?u _ :: tensor ?A → ?B => eapply tensor_types1; [|easy]
+         | |- U2 ?u _ _ :: tensor ?A → ?B =>
+           progress (eapply tensor_types2; [lia| |easy|easy])
+         | |- ?g :: ?A * ?B → _  => apply arrow_mul
          | |- ?g :: ?A ⊗ ?B → _  => tryif (is_I A + is_I B) then fail else
              (* should be able to rewrite directly *)
              eapply Geq_arrow_l; [|rewrite decompose_tensor; reflexivity]
-         | |- ?g :: ?A → ?B      => tryif is_evar A then fail else
-             solve [eauto with base_types_db]
-         | |- ?B == ?B'          => tryif has_evar B then fail else
-            (repeat rewrite mul_tensor_dist);
-            (repeat normalize_mul);
-            (repeat rewrite <- i_tensor_dist_l);
-            (repeat rewrite <- neg_tensor_dist_l);
-            autorewrite with mul_db;
-            try reflexivity
+         | |- tensor ?B == tensor ?B' => tryif has_evar B then fail else show_tensor_eq
+         | |- ?B == ?B'               => tryif has_evar B then fail else show_mul_eq
          end.  
